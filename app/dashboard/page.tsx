@@ -1,10 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { LogOut, TrendingUp, Wallet, CreditCard, PieChart, UserRound, Trash2 } from 'lucide-react'
-import FinanceLoader from '@/components/ui/FinanceLoader'
-import { Line, Doughnut } from 'react-chartjs-2'
+import { CreditCard, PieChart, TrendingUp, Trash2, Wallet } from 'lucide-react'
+import { Doughnut, Line } from 'react-chartjs-2'
 import {
   ArcElement,
   BarElement,
@@ -17,34 +15,21 @@ import {
   PointElement,
   Tooltip
 } from 'chart.js'
-import { HolographicButton, HolographicCard } from '@/components/dashboard/HolographicUI'
-import { AIAdvisor } from '@/components/dashboard/features/AIAdvisor/AIAdvisor'
-import { CostCutter } from '@/components/dashboard/features/CostCutter/CostCutter'
-import { FinancialTimeline } from '@/components/dashboard/features/Timeline/FinancialTimeline'
+
+import { HolographicCard } from '@/components/dashboard/HolographicUI'
+import FinanceLoader from '@/components/ui/FinanceLoader'
 import { useAuth } from '@/contexts/AuthContext'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { BrandIdentity } from '@/components/BrandIdentity'
 import {
-  createExpense,
-  createLoan,
   deleteExpense,
   deleteLoan,
-  getDashboardExpenseSummary,
   getDashboardCharts,
   getDashboardFinancialScore,
-  getDashboardTimeline,
   getExpenses,
-  getFinancialProfile,
   getFinancialSummary,
   getLoans,
-  updateFinancialProfile,
   type ExpenseItem,
-  type FinancialProfile,
   type FinancialSummary,
-  type LoanItem,
-  type RiskTolerance
+  type LoanItem
 } from '@/lib/financial-client'
 
 ChartJS.register(
@@ -59,16 +44,6 @@ ChartJS.register(
   Filler
 )
 
-type ProfileForm = {
-  full_name: string
-  country: string
-  student_status: string
-  university: string
-  monthly_income: number
-  savings_goal: number
-  risk_tolerance: RiskTolerance
-}
-
 const DEFAULT_SUMMARY: FinancialSummary = {
   total_income: 0,
   total_expenses: 0,
@@ -82,15 +57,10 @@ const DEFAULT_SUMMARY: FinancialSummary = {
   financial_health_score: 0
 }
 
-export default function DashboardPage() {
-  const router = useRouter()
-  const { user, guestUser, isGuest, loading: authLoading, logout } = useAuth()
+export default function DashboardOverviewPage() {
+  const { user, guestUser, isGuest, loading: authLoading } = useAuth()
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'ai' | 'cost' | 'timeline' | 'profile'>(
-    'overview'
-  )
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [summary, setSummary] = useState<FinancialSummary>(DEFAULT_SUMMARY)
   const [dashboardScore, setDashboardScore] = useState<{ score: number; grade: string }>({
@@ -106,70 +76,30 @@ export default function DashboardPage() {
     monthlyTrend: [],
     cashflowBreakdown: []
   })
-  const [dashboardTimeline, setDashboardTimeline] = useState<
-    Array<{
-      id: string
-      type: 'loan_payment_due' | 'expense_logged'
-      date: string
-      title: string
-      amount: number
-      status: 'upcoming' | 'recorded'
-    }>
-  >([])
-  const [expenseSummary, setExpenseSummary] = useState<{
-    by_category: Array<{ category: string; amount: number; percentage: number }>
-  }>({
-    by_category: []
-  })
-  const [newExpense, setNewExpense] = useState({
-    amount: 0,
-    category: "",
-    description: "",
-    date: new Date().toISOString().slice(0, 10)
-  })
-  const [newLoan, setNewLoan] = useState({
-    loan_name: "",
-    loan_amount: 0,
-    interest_rate: 0,
-    monthly_payment: 0,
-    next_payment_date: ""
-  })
-  const [profile, setProfile] = useState<FinancialProfile | null>(null)
   const [expenses, setExpenses] = useState<ExpenseItem[]>([])
   const [loans, setLoans] = useState<LoanItem[]>([])
-  const [profileForm, setProfileForm] = useState<ProfileForm>({
-    full_name: '',
-    country: '',
-    student_status: '',
-    university: '',
-    monthly_income: 0,
-    savings_goal: 0,
-    risk_tolerance: 'moderate'
-  })
 
   const loadData = useCallback(async () => {
-    if (!user) return
-
     setError('')
     setLoading(true)
     try {
-      const [profileData, summaryData, expenseData, loanData, scoreData, chartsData, timelineData, expenseSummaryData] = await Promise.all([
-        getFinancialProfile(),
+      if (!user && isGuest) {
+        setSummary(DEFAULT_SUMMARY)
+        setExpenses([])
+        setLoans([])
+        setDashboardScore({ score: 0, grade: 'F' })
+        setDashboardCharts({ expenseByCategory: [], monthlyTrend: [], cashflowBreakdown: [] })
+        return
+      }
+
+      const [summaryData, expenseData, loanData, scoreData, chartsData] = await Promise.all([
         getFinancialSummary(),
         getExpenses(),
         getLoans(),
         getDashboardFinancialScore(),
-        getDashboardCharts(),
-        getDashboardTimeline(),
-        getDashboardExpenseSummary()
+        getDashboardCharts()
       ])
 
-      if (!profileData.onboarding_completed) {
-        router.replace('/onboarding')
-        return
-      }
-
-      setProfile(profileData)
       setSummary(summaryData)
       setExpenses(expenseData.expenses)
       setLoans(loanData.loans)
@@ -178,158 +108,35 @@ export default function DashboardPage() {
         grade: scoreData.grade
       })
       setDashboardCharts(chartsData.charts)
-      setDashboardTimeline(timelineData.timeline)
-      setExpenseSummary({
-        by_category: expenseSummaryData.summary.by_category
-      })
-      setProfileForm({
-        full_name: profileData.full_name,
-        country: profileData.country,
-        student_status: profileData.student_status,
-        university: profileData.university,
-        monthly_income: profileData.monthly_income,
-        savings_goal: profileData.savings_goal,
-        risk_tolerance: profileData.risk_tolerance
-      })
     } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : 'Failed to load dashboard data'
-      if (message.toLowerCase().includes('failed to fetch')) {
-        setError('Backend connection failed. Please retry in a few seconds.')
-      } else {
-        setError(message)
-      }
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
-  }, [router, user])
+  }, [isGuest, user])
 
   useEffect(() => {
     if (authLoading) return
+    void loadData()
+  }, [authLoading, loadData])
 
-    if (!user && !isGuest) {
-      router.replace('/login')
-      return
-    }
-
-    if (user) {
-      void loadData()
-      return
-    }
-
-    setLoading(false)
-    setSummary(DEFAULT_SUMMARY)
-  }, [authLoading, isGuest, loadData, router, user])
-
-  const handleLogout = async () => {
-    await logout()
-    router.replace('/login')
-  }
-
-  const handleSaveProfile = async () => {
-    if (!user) return
-    setSaving(true)
-    setError('')
-    try {
-      const updated = await updateFinancialProfile({
-        full_name: profileForm.full_name,
-        country: profileForm.country,
-        student_status: profileForm.student_status,
-        university: profileForm.university,
-        monthly_income: Number(profileForm.monthly_income || 0),
-        savings_goal: Number(profileForm.savings_goal || 0),
-        risk_tolerance: profileForm.risk_tolerance
-      })
-      setProfile(updated)
-      await loadData()
-    } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : 'Failed to save profile'
-      if (message.toLowerCase().includes('failed to fetch')) {
-        setError('Unable to save right now due to a network issue. Please try again shortly.')
-      } else {
-        setError(message)
-      }
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCreateExpense = async () => {
-    if (!newExpense.category || newExpense.amount <= 0) return
-    setError("")
-    try {
-      await createExpense({
-        category: newExpense.category,
-        amount: Number(newExpense.amount),
-        description: newExpense.description || undefined,
-        date: newExpense.date || undefined
-      })
-      setNewExpense({ amount: 0, category: "", description: "", date: new Date().toISOString().slice(0, 10) })
-      await loadData()
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Failed to add expense")
-    }
-  }
-
-  const handleDeleteExpense = async (id: string) => {
-    setError("")
+  async function handleDeleteExpense(id: string) {
     try {
       await deleteExpense(id)
       await loadData()
     } catch (delError) {
-      setError(delError instanceof Error ? delError.message : "Failed to delete expense")
+      setError(delError instanceof Error ? delError.message : 'Failed to delete expense')
     }
   }
 
-  const handleCreateLoan = async () => {
-    if (newLoan.loan_amount <= 0 || newLoan.monthly_payment <= 0) return
-    setError("")
-    try {
-      await createLoan({
-        loan_name: newLoan.loan_name || undefined,
-        loan_amount: Number(newLoan.loan_amount),
-        interest_rate: Number(newLoan.interest_rate),
-        monthly_payment: Number(newLoan.monthly_payment),
-        next_payment_date: newLoan.next_payment_date || undefined
-      })
-      setNewLoan({
-        loan_name: "",
-        loan_amount: 0,
-        interest_rate: 0,
-        monthly_payment: 0,
-        next_payment_date: ""
-      })
-      await loadData()
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Failed to add loan")
-    }
-  }
-
-  const handleDeleteLoan = async (id: string) => {
-    setError("")
+  async function handleDeleteLoan(id: string) {
     try {
       await deleteLoan(id)
       await loadData()
     } catch (delError) {
-      setError(delError instanceof Error ? delError.message : "Failed to delete loan")
+      setError(delError instanceof Error ? delError.message : 'Failed to delete loan')
     }
   }
-
-  const displayName = useMemo(() => {
-    if (isGuest && guestUser) return guestUser.name
-    if (profile?.full_name) return profile.full_name
-    if (user?.email) return user.email.split('@')[0]
-    return 'Student'
-  }, [guestUser, isGuest, profile?.full_name, user?.email])
-
-  const userData = useMemo(
-    () => ({
-      monthlyIncome: summary.total_income,
-      monthlyExpenses: summary.total_expenses,
-      country: profile?.country || 'United States',
-      loanAmount: summary.total_loan_balance
-    }),
-    [profile?.country, summary.total_expenses, summary.total_income, summary.total_loan_balance]
-  )
 
   const cashFlowChartData = useMemo(() => {
     if (dashboardCharts.cashflowBreakdown.length > 0) {
@@ -382,9 +189,7 @@ export default function DashboardPage() {
     }
 
     const monthlyNet = summary.remaining_balance
-    const points = Array.from({ length: 6 }, (_, index) => {
-      return Math.round(monthlyNet * (index + 1))
-    })
+    const points = Array.from({ length: 6 }, (_, index) => Math.round(monthlyNet * (index + 1)))
 
     return {
       labels: ['Month 1', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6'],
@@ -401,531 +206,171 @@ export default function DashboardPage() {
     }
   }, [dashboardCharts.monthlyTrend, summary.remaining_balance])
 
-  const tabs = [
-    { id: 'overview' as const, label: 'Overview' },
-    { id: 'ai' as const, label: 'AI Advisor' },
-    { id: 'cost' as const, label: 'Cost Cutter' },
-    { id: 'timeline' as const, label: 'Timeline' },
-    { id: 'profile' as const, label: 'Profile' }
-  ]
+  const displayName = useMemo(() => {
+    if (guestUser?.name) return guestUser.name
+    if (user?.email) return user.email.split('@')[0]
+    return 'Student'
+  }, [guestUser?.name, user?.email])
 
   if (authLoading || loading) {
     return <FinanceLoader />
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_8%_0%,#0891b22b,transparent_38%),radial-gradient(circle_at_92%_6%,#0ea5e91f,transparent_34%),linear-gradient(#020617,#020617)] text-white">
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div className="space-y-3">
-            <BrandIdentity size={30} textClassName="text-xl font-semibold text-cyan-200" />
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-cyan-300/75">Dashboard</p>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight">Welcome, {displayName}</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {user ? <p className="text-sm text-slate-300">{user.email}</p> : null}
-            <Button
-              variant="outline"
-              onClick={handleLogout}
-              className="border-slate-700 bg-slate-900/80 hover:bg-slate-800"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </header>
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-slate-800/80 bg-slate-950/50 px-5 py-5">
+        <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/80">Dashboard</p>
+        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">Welcome, {displayName}</h1>
+      </section>
 
-        {isGuest ? (
-          <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-amber-100">
-            Guest mode is active. Sign up to save real financial data and enable onboarding.
-          </div>
-        ) : null}
+      {error ? (
+        <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-rose-200">{error}</div>
+      ) : null}
 
-        {error ? (
-          <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-rose-200">
-            {error}
-          </div>
-        ) : null}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <HolographicCard>
+          <p className="flex items-center gap-2 text-sm text-slate-300">
+            <Wallet className="h-4 w-4 text-cyan-300" />
+            Total Income
+          </p>
+          <p className="mt-2 text-4xl font-semibold">${summary.total_income.toLocaleString()}</p>
+        </HolographicCard>
 
-        <div className="pt-1">
-          <div className="mx-auto w-full max-w-3xl">
-            <div className="relative rounded-2xl bg-gradient-to-r from-cyan-500/30 via-sky-500/10 to-cyan-500/30 p-[1px] shadow-[0_16px_48px_rgba(8,47,73,0.5)]">
-              <div className="rounded-2xl border border-cyan-500/20 bg-slate-950/80 backdrop-blur px-2 py-2">
-                <div className="flex items-center justify-between gap-1">
-                  {tabs.map((tab) => (
-                    <HolographicButton
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex-1 rounded-xl text-xs sm:text-sm font-medium px-3 py-2 ${
-                        activeTab === tab.id
-                          ? 'bg-cyan-300 text-slate-50 border-cyan-200 shadow-[0_10px_30px_rgba(34,211,238,0.45)] hover:bg-cyan-300 hover:text-slate-50 focus-visible:bg-cyan-300 focus-visible:text-slate-50'
-                          : 'text-slate-300'
-                      }`}
-                    >
-                      {tab.label}
-                    </HolographicButton>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <HolographicCard>
+          <p className="flex items-center gap-2 text-sm text-slate-300">
+            <PieChart className="h-4 w-4 text-rose-300" />
+            Total Expenses
+          </p>
+          <p className="mt-2 text-4xl font-semibold">${summary.total_expenses.toLocaleString()}</p>
+        </HolographicCard>
 
-        {activeTab === 'overview' ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              <HolographicCard>
-                <p className="text-slate-300 text-sm flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-cyan-300" />
-                  Total Income
-                </p>
-                <p className="text-3xl font-semibold mt-2">${summary.total_income.toLocaleString()}</p>
-              </HolographicCard>
-              <HolographicCard>
-                <p className="text-slate-300 text-sm flex items-center gap-2">
-                  <PieChart className="h-4 w-4 text-rose-300" />
-                  Total Expenses
-                </p>
-                <p className="text-3xl font-semibold mt-2">${summary.total_expenses.toLocaleString()}</p>
-              </HolographicCard>
-              <HolographicCard>
-                <p className="text-slate-300 text-sm flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-amber-300" />
-                  Loan Payments
-                </p>
-                <p className="text-3xl font-semibold mt-2">
-                  ${summary.monthly_loan_payments.toLocaleString()}
-                </p>
-              </HolographicCard>
-              <HolographicCard>
-                <p className="text-slate-300 text-sm flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-emerald-300" />
-                  Health Score
-                </p>
-                <p className="text-3xl font-semibold mt-2">{dashboardScore.score}/100</p>
-                <p className="text-xs text-slate-300 mt-1">Grade {dashboardScore.grade}</p>
-              </HolographicCard>
-            </div>
+        <HolographicCard>
+          <p className="flex items-center gap-2 text-sm text-slate-300">
+            <CreditCard className="h-4 w-4 text-amber-300" />
+            Loan Payments
+          </p>
+          <p className="mt-2 text-4xl font-semibold">${summary.monthly_loan_payments.toLocaleString()}</p>
+        </HolographicCard>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <HolographicCard>
-                <h3 className="text-xl font-semibold mb-4">Monthly Cash Flow Mix</h3>
-                <div className="h-72">
-                  <Doughnut
-                    data={cashFlowChartData}
-                    options={{
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          labels: { color: '#e2e8f0' }
-                        }
-                      }
-                    }}
-                  />
-                </div>
-              </HolographicCard>
+        <HolographicCard>
+          <p className="flex items-center gap-2 text-sm text-slate-300">
+            <TrendingUp className="h-4 w-4 text-emerald-300" />
+            Health Score
+          </p>
+          <p className="mt-2 text-4xl font-semibold">{dashboardScore.score}/100</p>
+          <p className="mt-1 text-xs text-slate-300">Grade {dashboardScore.grade}</p>
+        </HolographicCard>
+      </div>
 
-              <HolographicCard>
-                <h3 className="text-xl font-semibold mb-4">6-Month Projection</h3>
-                <div className="h-72">
-                  <Line
-                    data={projectionChartData}
-                    options={{
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          labels: { color: '#e2e8f0' }
-                        }
-                      },
-                      scales: {
-                        x: {
-                          ticks: { color: '#e2e8f0' },
-                          grid: { color: 'rgba(148, 163, 184, 0.18)' }
-                        },
-                        y: {
-                          ticks: {
-                            color: '#e2e8f0',
-                            callback: (value) => `$${value.toLocaleString()}`
-                          },
-                          grid: { color: 'rgba(148, 163, 184, 0.18)' }
-                        }
-                      }
-                    }}
-                  />
-                </div>
-              </HolographicCard>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <HolographicCard>
-                <h3 className="text-lg font-semibold mb-3">Recent Expenses</h3>
-                <div className="space-y-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                  {expenses.length === 0 ? (
-                    <p className="text-slate-400 text-sm">No expenses logged yet.</p>
-                  ) : (
-                    expenses.slice(0, 10).map((expense) => (
-                      <div key={expense.id} className="rounded-lg border border-slate-700/60 bg-slate-900/60 p-3 flex items-start justify-between gap-2 group">
-                        <div className="min-w-0">
-                          <p className="font-medium">{expense.category}</p>
-                          <p className="text-sm text-slate-300">${expense.amount.toLocaleString()}</p>
-                          {expense.description ? <p className="text-xs text-slate-500 truncate">{expense.description}</p> : null}
-                          <p className="text-xs text-slate-400">{expense.date}</p>
-                        </div>
-                        <button
-                          onClick={() => void handleDeleteExpense(expense.id)}
-                          className="shrink-0 rounded-md p-1.5 text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
-                          title="Delete expense"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </HolographicCard>
-
-              <HolographicCard>
-                <h3 className="text-lg font-semibold mb-3">Loan Snapshot</h3>
-                <div className="space-y-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                  {loans.length === 0 ? (
-                    <p className="text-slate-400 text-sm">No loans recorded yet.</p>
-                  ) : (
-                    loans.slice(0, 10).map((loan) => (
-                      <div key={loan.id} className="rounded-lg border border-slate-700/60 bg-slate-900/60 p-3 flex items-start justify-between gap-2 group">
-                        <div className="min-w-0">
-                          <p className="font-medium">{loan.loan_name}</p>
-                          <p className="text-sm text-slate-300">
-                            Balance: ${loan.remaining_balance.toLocaleString()}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            Min payment: ${loan.minimum_payment.toLocaleString()}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => void handleDeleteLoan(loan.id)}
-                          className="shrink-0 rounded-md p-1.5 text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
-                          title="Delete loan"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </HolographicCard>
-            </div>
-          </div>
-        ) : null}
-
-        {activeTab === 'ai' ? (
-          <AIAdvisor
-            userData={{
-              monthlyIncome: userData.monthlyIncome,
-              monthlyExpenses: userData.monthlyExpenses,
-              country: userData.country
-            }}
-          />
-        ) : null}
-
-        {activeTab === 'cost' ? (
-          <CostCutter
-            userData={{
-              monthlyExpenses: userData.monthlyExpenses,
-              monthlyIncome: userData.monthlyIncome,
-              country: userData.country,
-              categories: expenseSummary.by_category
-            }}
-          />
-        ) : null}
-
-        {activeTab === 'timeline' ? (
-          <div className="space-y-6">
-            <FinancialTimeline
-              userData={{
-                loanAmount: userData.loanAmount,
-                monthlyIncome: userData.monthlyIncome,
-                monthlyExpenses: userData.monthlyExpenses,
-                loans
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <HolographicCard>
+          <h3 className="mb-4 text-xl font-semibold">Monthly Cash Flow Mix</h3>
+          <div className="h-72">
+            <Doughnut
+              data={cashFlowChartData}
+              options={{
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    labels: { color: '#e2e8f0' }
+                  }
+                }
               }}
             />
-            <HolographicCard>
-              <h3 className="text-lg font-semibold mb-3">Backend Timeline Events</h3>
-              <div className="space-y-3">
-                {dashboardTimeline.length === 0 ? (
-                  <p className="text-slate-400 text-sm">No timeline events available yet.</p>
-                ) : (
-                  dashboardTimeline.slice(0, 10).map((event) => (
-                    <div key={event.id} className="rounded-lg border border-slate-700/60 bg-slate-900/60 p-3">
-                      <p className="font-medium">{event.title}</p>
-                      <p className="text-sm text-slate-300">${event.amount.toLocaleString()}</p>
-                      <p className="text-xs text-slate-400">
-                        {event.date} | {event.status}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </HolographicCard>
           </div>
-        ) : null}
+        </HolographicCard>
 
-        {activeTab === 'profile' ? (
-          <HolographicCard className="border-cyan-500/25">
-            <div className="rounded-xl border border-cyan-500/20 bg-black/20 p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
-                <div>
-                  <h3 className="text-2xl font-semibold flex items-center gap-2">
-                    <UserRound className="h-6 w-6 text-cyan-300" />
-                    Profile Settings
-                  </h3>
-                  <p className="text-sm text-slate-300 mt-1">
-                    Keep your financial profile accurate for better recommendations and projections.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push('/onboarding')}
-                  className="border-slate-700 bg-slate-900/80 hover:bg-slate-800"
+        <HolographicCard>
+          <h3 className="mb-4 text-xl font-semibold">6-Month Projection</h3>
+          <div className="h-72">
+            <Line
+              data={projectionChartData}
+              options={{
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    labels: { color: '#e2e8f0' }
+                  }
+                },
+                scales: {
+                  x: {
+                    ticks: { color: '#e2e8f0' },
+                    grid: { color: 'rgba(148, 163, 184, 0.18)' }
+                  },
+                  y: {
+                    ticks: {
+                      color: '#e2e8f0',
+                      callback: (value) => `$${value.toLocaleString()}`
+                    },
+                    grid: { color: 'rgba(148, 163, 184, 0.18)' }
+                  }
+                }
+              }}
+            />
+          </div>
+        </HolographicCard>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <HolographicCard>
+          <h3 className="mb-3 text-lg font-semibold">Recent Expenses</h3>
+          <div className="max-h-80 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+            {expenses.length === 0 ? (
+              <p className="text-sm text-slate-400">No expenses logged yet.</p>
+            ) : (
+              expenses.slice(0, 10).map((expense) => (
+                <div
+                  key={expense.id}
+                  className="group flex items-start justify-between gap-2 rounded-lg border border-slate-700/60 bg-slate-900/60 p-3"
                 >
-                  Re-run onboarding
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="rounded-xl border border-slate-700/60 bg-slate-950/50 p-5 space-y-4">
-                  <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/90">
-                    Personal & Academic
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="full_name">Full name</Label>
-                      <Input
-                        id="full_name"
-                        value={profileForm.full_name}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({ ...prev, full_name: event.target.value }))
-                        }
-                        className="bg-slate-950/70 border-cyan-500/30"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="country">Country</Label>
-                      <Input
-                        id="country"
-                        value={profileForm.country}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({ ...prev, country: event.target.value }))
-                        }
-                        className="bg-slate-950/70 border-cyan-500/30"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="student_status">Student status</Label>
-                      <Input
-                        id="student_status"
-                        value={profileForm.student_status}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({ ...prev, student_status: event.target.value }))
-                        }
-                        className="bg-slate-950/70 border-cyan-500/30"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="university">University</Label>
-                      <Input
-                        id="university"
-                        value={profileForm.university}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({ ...prev, university: event.target.value }))
-                        }
-                        className="bg-slate-950/70 border-cyan-500/30"
-                      />
-                    </div>
+                  <div className="min-w-0">
+                    <p className="font-medium">{expense.category}</p>
+                    <p className="text-sm text-slate-300">${expense.amount.toLocaleString()}</p>
+                    {expense.description ? <p className="truncate text-xs text-slate-500">{expense.description}</p> : null}
+                    <p className="text-xs text-slate-400">{expense.date}</p>
                   </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-700/60 bg-slate-950/50 p-5 space-y-4">
-                  <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/90">
-                    Financial Preferences
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="monthly_income">Monthly income</Label>
-                      <Input
-                        id="monthly_income"
-                        type="number"
-                        min={0}
-                        value={profileForm.monthly_income}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({
-                            ...prev,
-                            monthly_income: Number(event.target.value || 0)
-                          }))
-                        }
-                        className="bg-slate-950/70 border-cyan-500/30"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="savings_goal">Savings goal</Label>
-                      <Input
-                        id="savings_goal"
-                        type="number"
-                        min={0}
-                        value={profileForm.savings_goal}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({
-                            ...prev,
-                            savings_goal: Number(event.target.value || 0)
-                          }))
-                        }
-                        className="bg-slate-950/70 border-cyan-500/30"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="risk_tolerance">Risk tolerance</Label>
-                      <select
-                        id="risk_tolerance"
-                        value={profileForm.risk_tolerance}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({
-                            ...prev,
-                            risk_tolerance: event.target.value as RiskTolerance
-                          }))
-                        }
-                        className="w-full h-10 rounded-md border border-cyan-500/30 bg-slate-950/70 px-3 text-sm outline-none focus:border-cyan-300"
-                      >
-                        <option value="low">Low</option>
-                        <option value="moderate">Moderate</option>
-                        <option value="high">High</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="rounded-xl border border-slate-700/60 bg-slate-950/50 p-5 space-y-3">
-                  <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/90">Quick Add Expense</h4>
-                  <Input
-                    placeholder="Category"
-                    value={newExpense.category}
-                    onChange={(event) =>
-                      setNewExpense((prev) => ({ ...prev, category: event.target.value }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Amount"
-                    value={newExpense.amount}
-                    onChange={(event) =>
-                      setNewExpense((prev) => ({ ...prev, amount: Number(event.target.value || 0) }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Input
-                    placeholder="Description (optional)"
-                    value={newExpense.description}
-                    onChange={(event) =>
-                      setNewExpense((prev) => ({ ...prev, description: event.target.value }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Input
-                    type="date"
-                    value={newExpense.date}
-                    onChange={(event) =>
-                      setNewExpense((prev) => ({ ...prev, date: event.target.value }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleCreateExpense}
-                    className="rounded-xl px-4 py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-semibold shadow-[0_10px_30px_rgba(34,211,238,0.35)] border border-cyan-300/60"
+                  <button
+                    onClick={() => void handleDeleteExpense(expense.id)}
+                    className="shrink-0 rounded-md p-1.5 text-slate-600 opacity-0 transition-colors group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-400"
+                    title="Delete expense"
                   >
-                    Add expense
-                  </Button>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
+              ))
+            )}
+          </div>
+        </HolographicCard>
 
-                <div className="rounded-xl border border-slate-700/60 bg-slate-950/50 p-5 space-y-3">
-                  <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/90">Quick Add Loan</h4>
-                  <Input
-                    placeholder="Loan name (e.g. Student Loan)"
-                    value={newLoan.loan_name}
-                    onChange={(event) =>
-                      setNewLoan((prev) => ({ ...prev, loan_name: event.target.value }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Loan amount"
-                    value={newLoan.loan_amount}
-                    onChange={(event) =>
-                      setNewLoan((prev) => ({ ...prev, loan_amount: Number(event.target.value || 0) }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Interest rate (%)"
-                    value={newLoan.interest_rate}
-                    onChange={(event) =>
-                      setNewLoan((prev) => ({ ...prev, interest_rate: Number(event.target.value || 0) }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Monthly payment"
-                    value={newLoan.monthly_payment}
-                    onChange={(event) =>
-                      setNewLoan((prev) => ({
-                        ...prev,
-                        monthly_payment: Number(event.target.value || 0)
-                      }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Input
-                    type="date"
-                    value={newLoan.next_payment_date}
-                    onChange={(event) =>
-                      setNewLoan((prev) => ({ ...prev, next_payment_date: event.target.value }))
-                    }
-                    className="bg-slate-950/70 border-cyan-500/30"
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleCreateLoan}
-                    className="rounded-xl px-4 py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-semibold shadow-[0_10px_30px_rgba(34,211,238,0.35)] border border-cyan-300/60"
-                  >
-                    Add loan
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-7 flex justify-end">
-                <Button
-                  onClick={handleSaveProfile}
-                  disabled={saving || isGuest}
-                  className="rounded-xl px-4 py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-semibold shadow-[0_10px_30px_rgba(34,211,238,0.35)] border border-cyan-300/60"
+        <HolographicCard>
+          <h3 className="mb-3 text-lg font-semibold">Loan Snapshot</h3>
+          <div className="max-h-80 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+            {loans.length === 0 ? (
+              <p className="text-sm text-slate-400">No loans recorded yet.</p>
+            ) : (
+              loans.slice(0, 10).map((loan) => (
+                <div
+                  key={loan.id}
+                  className="group flex items-start justify-between gap-2 rounded-lg border border-slate-700/60 bg-slate-900/60 p-3"
                 >
-                  {saving ? 'Saving...' : 'Save profile'}
-                </Button>
-              </div>
-            </div>
-          </HolographicCard>
-        ) : null}
+                  <div className="min-w-0">
+                    <p className="font-medium">{loan.loan_name}</p>
+                    <p className="text-sm text-slate-300">Balance: ${loan.remaining_balance.toLocaleString()}</p>
+                    <p className="text-xs text-slate-400">Min payment: ${loan.minimum_payment.toLocaleString()}</p>
+                  </div>
+                  <button
+                    onClick={() => void handleDeleteLoan(loan.id)}
+                    className="shrink-0 rounded-md p-1.5 text-slate-600 opacity-0 transition-colors group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-400"
+                    title="Delete loan"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </HolographicCard>
       </div>
     </div>
   )
 }
-
