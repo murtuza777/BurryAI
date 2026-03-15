@@ -111,6 +111,13 @@ export interface AgentAdviceResponse {
   >
   knowledge_sources: Array<{ title: string; source: string }>
   web_sources: Array<{ title: string; url: string; source: "tavily" | "serper" | "none" }>
+  tool_summaries: Array<{ name: string; summary: string }>
+  rag: {
+    vectorize_enabled: boolean
+    knowledge_count: number
+    web_count: number
+    web_search_triggered: boolean
+  }
 }
 
 type ErrorResponse = {
