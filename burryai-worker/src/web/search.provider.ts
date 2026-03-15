@@ -120,14 +120,18 @@ export async function searchWebForIncomeIdeas(params: {
   message: string
   env: SearchProviderEnv
   topK?: number
+  forceSearch?: boolean
 }): Promise<AgentWebResult[]> {
-  if (!shouldSearchWeb(params.intent, params.message)) {
+  if (!params.forceSearch && !shouldSearchWeb(params.intent, params.message)) {
     return []
   }
 
   const topK = Math.max(1, Math.min(params.topK ?? 3, 5))
   const provider = (params.env.provider?.toLowerCase() ?? "tavily") as ProviderName
-  const query = `student side hustle opportunities ${params.message}`
+  const query =
+    params.intent === "income"
+      ? `student side hustle opportunities ${params.message}`
+      : `student personal finance advice ${params.message}`
   const key = cacheKey(provider, query)
   const cached = readCache(key)
   if (cached) return cached

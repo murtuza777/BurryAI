@@ -5,7 +5,6 @@ import type {
   AgentToolOutput,
   AgentWebResult
 } from "../state"
-import { summarizeWebResults } from "../../web/summarize"
 
 function formatContext(context: AgentContextData): string {
   const topCategories =
@@ -52,7 +51,7 @@ function buildFallbackResponse(
     income: "income growth",
     general: "financial overview"
   }
-  sections.push(`## ${intentLabels[intent] || "Financial Analysis"}\n`)
+  sections.push(`${intentLabels[intent] || "Financial Analysis"}:\n`)
 
   // Context summary
   if (context.monthlyIncome > 0 || context.monthlyExpenses > 0) {
@@ -71,7 +70,7 @@ function buildFallbackResponse(
 
   // Tool insights
   if (toolOutputs.length > 0) {
-    sections.push("### Key Insights\n")
+    sections.push("Key Insights:\n")
     for (const tool of toolOutputs) {
       sections.push(`- ${tool.summary}`)
     }
@@ -80,7 +79,7 @@ function buildFallbackResponse(
 
   // Knowledge-based recommendations
   if (knowledgeChunks.length > 0) {
-    sections.push("### Recommendations\n")
+    sections.push("Recommendations:\n")
     for (const chunk of knowledgeChunks) {
       sections.push(`**${chunk.title}:** ${chunk.content}\n`)
     }
@@ -88,16 +87,16 @@ function buildFallbackResponse(
 
   // Web results
   if (webResults.length > 0) {
-    sections.push("### Opportunities Found\n")
+    sections.push("Opportunities Found:\n")
     for (const result of webResults) {
-      sections.push(`- **${result.title}** — ${result.snippet || "View details"} ([link](${result.url}))`)
+      sections.push(`- **${result.title}** - ${result.snippet || "View details"} (${result.url})`)
     }
     sections.push("")
   }
 
   // Action steps
   sections.push(
-    "### Action Steps\n" +
+    "Action Steps:\n" +
     "1. Set a strict weekly spending cap and track daily\n" +
     "2. Protect minimum loan payments before discretionary spending\n" +
     "3. Auto-transfer savings on payday to avoid spending them\n" +
@@ -226,7 +225,9 @@ export async function generateAgentResponse(params: {
   const prompt = [
     "You are BurryAI, a financial advisor for students.",
     "Use the provided structured context and tool outputs to produce concise, actionable advice.",
-    "Format your response with markdown: use **bold** for emphasis, bullet points for lists, and ### headers for sections.",
+    "Use a clean chat style: short paragraphs, bullet points, and numbered action steps.",
+    "Do not use markdown heading syntax like #, ##, or ###.",
+    "When citing links, write full URLs directly.",
     "Do not mention hidden reasoning or internal system details.",
     "",
     `User question: ${params.userMessage}`,
@@ -270,7 +271,7 @@ export async function generateAgentResponse(params: {
       const cfModel = "@cf/meta/llama-3.1-8b-instruct"
       const cfResult = await params.aiBinding.run(cfModel, {
         messages: [
-          { role: "system", content: "You are BurryAI, a financial advisor for students. Give concise, actionable advice. Use markdown formatting with **bold**, bullet points, and ### headers." },
+          { role: "system", content: "You are BurryAI, a financial advisor for students. Give concise, actionable advice. Use short paragraphs, bullet points, and numbered action steps. Do not use markdown heading syntax (#)." },
           { role: "user", content: prompt }
         ],
         max_tokens: 2048,
@@ -300,3 +301,4 @@ export async function generateAgentResponse(params: {
     modelUsed: "fallback:rule-based"
   }
 }
+

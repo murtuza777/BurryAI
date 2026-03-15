@@ -52,6 +52,7 @@ export type AgentState = {
   toolOutputs: AgentToolOutput[]
   knowledgeChunks: AgentKnowledgeChunk[]
   webResults: AgentWebResult[]
+  webSearchTriggered: boolean
   response: string
   modelUsed: string
 }

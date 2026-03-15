@@ -38,9 +38,11 @@ export async function runFinancialAgent(params: {
     embeddingModel: params.embeddingModel,
     topK: 3
   })
+  const webSearchTriggered = intent === "income" || knowledgeChunks.length === 0
   const webResults = await searchWebForIncomeIdeas({
     intent,
     message: params.userMessage,
+    forceSearch: webSearchTriggered,
     env: {
       provider: params.webSearchProvider,
       tavilyApiKey: params.tavilyApiKey,
@@ -69,6 +71,7 @@ export async function runFinancialAgent(params: {
     toolOutputs,
     knowledgeChunks,
     webResults,
+    webSearchTriggered,
     response: generation.response,
     modelUsed: generation.modelUsed
   }

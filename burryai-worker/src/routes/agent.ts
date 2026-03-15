@@ -73,6 +73,10 @@ agentRoutes.post("/advice", async (c) => {
       model_used: result.modelUsed,
       intent: result.intent,
       used_tools: result.selectedTools,
+      tool_summaries: result.toolOutputs.map((tool) => ({
+        name: tool.name,
+        summary: tool.summary
+      })),
       knowledge_sources: result.knowledgeChunks.map((chunk) => ({
         title: chunk.title,
         source: chunk.source
@@ -81,7 +85,13 @@ agentRoutes.post("/advice", async (c) => {
         title: item.title,
         url: item.url,
         source: item.source
-      }))
+      })),
+      rag: {
+        vectorize_enabled: useVectorize,
+        knowledge_count: result.knowledgeChunks.length,
+        web_count: result.webResults.length,
+        web_search_triggered: result.webSearchTriggered
+      }
     })
   } catch {
     return c.json({ error: "Failed to generate financial advice" }, 500)
