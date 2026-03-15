@@ -1,273 +1,803 @@
-﻿import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Search, Send, Sparkles, Trash2 } from "lucide-react";
-import {
-  getAgentAdvice,
-  type AgentAdviceResponse,
-} from "@/lib/financial-client";
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Bot, Info, Loader2, MessageSquarePlus, Search, Send, Sparkles, Trash2 } from "lucide-react"
+import { getAgentAdvice, type AgentAdviceResponse } from "@/lib/financial-client"
+
+type MessageMeta = {
+  intent: AgentAdviceResponse["intent"]
+  usedTools: AgentAdviceResponse["used_tools"]
+  toolSummaries: AgentAdviceResponse["tool_summaries"]
+  knowledgeSources: AgentAdviceResponse["knowledge_sources"]
+  webSources: AgentAdviceResponse["web_sources"]
+  rag: AgentAdviceResponse["rag"]
+}
 
 type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-  modelUsed?: string;
-};
+  id: string
+  role: "user" | "assistant"
+  content: string
+  timestamp: Date
+  modelUsed?: string
+  meta?: MessageMeta
+}
+
+type ChatThread = {
+  id: string
+  title: string
+  createdAt: Date
+  updatedAt: Date
+  messages: Message[]
+}
 
 interface AIAdvisorProps {
   userData: {
-    monthlyIncome: number;
-    monthlyExpenses: number;
-    country: string;
-  };
+    monthlyIncome: number
+    monthlyExpenses: number
+    country: string
+  }
+  layout?: "embedded" | "fullscreen"
+  storageNamespace?: string
 }
 
-const CHAT_STORAGE_KEY = "burryai:advisor:chat:v2";
+type InlineToken =
+  | { type: "text"; text: string }
+  | { type: "bold"; text: string }
+  | { type: "link"; text: string; href: string }
 
-const START_MESSAGE: Message = {
-  id: "welcome",
-  role: "assistant",
-  content:
-    "Hi! I am BurryAI. Ask anything about budgeting, debt, spending, and savings.",
-  timestamp: new Date(),
-  modelUsed: "system",
-};
+const CHAT_THREADS_STORAGE_PREFIX = "burryai:advisor:threads:v1"
+const ACTIVE_THREAD_STORAGE_PREFIX = "burryai:advisor:active-thread:v1"
+const LEGACY_CHAT_STORAGE_KEY = "burryai:advisor:chat:v3"
 
 const QUICK_PROMPTS = [
   "Analyze my spending breakdown",
   "How can I save more monthly?",
   "Build me a debt payoff plan",
-  "Compare income vs expenses",
-];
+  "Compare income vs expenses"
+]
 
 const AGENT_STEPS = [
   "Understanding request",
   "Searching financial context",
   "Reasoning on your data",
-  "Drafting response",
-];
+  "Drafting response"
+]
 
-export function AIAdvisor({ userData }: AIAdvisorProps) {
-  const [messages, setMessages] = useState<Message[]>([START_MESSAGE]);
-  const [inputMessage, setInputMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [agentStep, setAgentStep] = useState(0);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+function createWelcomeMessage(): Message {
+  return {
+    id: `welcome-${Date.now()}`,
+    role: "assistant",
+    content: "Hi! I am BurryAI. Ask anything about budgeting, debt, spending, and savings.",
+    timestamp: new Date(),
+    modelUsed: "system"
+  }
+}
+
+function createThread(title = "New Chat"): ChatThread {
+  const now = new Date()
+  return {
+    id: `thread-${crypto.randomUUID()}`,
+    title,
+    createdAt: now,
+    updatedAt: now,
+    messages: [createWelcomeMessage()]
+  }
+}
+
+function makeThreadTitle(content: string): string {
+  const cleaned = content.trim().replace(/\s+/g, " ")
+  if (!cleaned) return "New Chat"
+  if (cleaned.length <= 36) return cleaned
+  return `${cleaned.slice(0, 36)}...`
+}
+
+function normalizeModelName(modelUsed?: string): string {
+  if (!modelUsed) return "-"
+  if (modelUsed.startsWith("gemini:")) return modelUsed.slice("gemini:".length)
+  return modelUsed
+}
+
+function trimUrl(url: string): { href: string; text: string } {
+  const match = url.match(/^(.*?)([.,!?;:])?$/)
+  const href = match?.[1] ?? url
+  return { href, text: url }
+}
+
+function parseInline(text: string): InlineToken[] {
+  const tokens: InlineToken[] = []
+  const pattern = /\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g
+  let lastIndex = 0
+
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index ?? 0
+    if (index > lastIndex) {
+      tokens.push({ type: "text", text: text.slice(lastIndex, index) })
+    }
+
+    if (match[1]) {
+      tokens.push({ type: "bold", text: match[1] })
+    } else if (match[2] && match[3]) {
+      tokens.push({ type: "link", text: match[2], href: match[3] })
+    } else if (match[4]) {
+      const normalized = trimUrl(match[4])
+      tokens.push({ type: "link", text: normalized.text, href: normalized.href })
+    }
+
+    lastIndex = index + match[0].length
+  }
+
+  if (lastIndex < text.length) {
+    tokens.push({ type: "text", text: text.slice(lastIndex) })
+  }
+
+  return tokens
+}
+
+function renderInline(text: string, keyPrefix: string): JSX.Element[] {
+  return parseInline(text).map((token, index) => {
+    if (token.type === "bold") {
+      return (
+        <strong key={`${keyPrefix}-b-${index}`} className="font-semibold text-slate-100">
+          {token.text}
+        </strong>
+      )
+    }
+
+    if (token.type === "link") {
+      return (
+        <a
+          key={`${keyPrefix}-l-${index}`}
+          href={token.href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-cyan-300 underline decoration-cyan-500/50 underline-offset-2 break-all"
+        >
+          {token.text}
+        </a>
+      )
+    }
+
+    return <span key={`${keyPrefix}-t-${index}`}>{token.text}</span>
+  })
+}
+
+function renderAssistantContent(text: string): JSX.Element[] {
+  const lines = text.replace(/\r\n/g, "\n").split("\n")
+  const nodes: JSX.Element[] = []
+  const bulletItems: string[] = []
+  const numberedItems: string[] = []
+
+  function flushBullets(key: number) {
+    if (bulletItems.length === 0) return
+    nodes.push(
+      <ul key={`ul-${key}`} className="my-2 list-disc space-y-1 pl-5 text-sm leading-relaxed">
+        {bulletItems.map((item, index) => (
+          <li key={`bul-${index}`}>{renderInline(item, `bul-${key}-${index}`)}</li>
+        ))}
+      </ul>
+    )
+    bulletItems.length = 0
+  }
+
+  function flushNumbers(key: number) {
+    if (numberedItems.length === 0) return
+    nodes.push(
+      <ol key={`ol-${key}`} className="my-2 list-decimal space-y-1 pl-5 text-sm leading-relaxed">
+        {numberedItems.map((item, index) => (
+          <li key={`num-${index}`}>{renderInline(item, `num-${key}-${index}`)}</li>
+        ))}
+      </ol>
+    )
+    numberedItems.length = 0
+  }
+
+  lines.forEach((rawLine, index) => {
+    const line = rawLine.trim()
+    if (!line) {
+      flushBullets(index)
+      flushNumbers(index)
+      return
+    }
+
+    const headingMatch = line.match(/^#{1,6}\s+(.+)$/)
+    if (headingMatch) {
+      flushBullets(index)
+      flushNumbers(index)
+      nodes.push(
+        <h4 key={`h-${index}`} className="mt-3 text-sm font-semibold text-cyan-200">
+          {renderInline(headingMatch[1], `h-${index}`)}
+        </h4>
+      )
+      return
+    }
+
+    if (/^[-*•]\s+/.test(line)) {
+      flushNumbers(index)
+      bulletItems.push(line.replace(/^[-*•]\s+/, ""))
+      return
+    }
+
+    if (/^\d+\.\s+/.test(line)) {
+      flushBullets(index)
+      numberedItems.push(line.replace(/^\d+\.\s+/, ""))
+      return
+    }
+
+    if (line.endsWith(":") && line.length < 80) {
+      flushBullets(index)
+      flushNumbers(index)
+      nodes.push(
+        <h4 key={`s-${index}`} className="mt-3 text-sm font-semibold text-cyan-200">
+          {renderInline(line, `s-${index}`)}
+        </h4>
+      )
+      return
+    }
+
+    flushBullets(index)
+    flushNumbers(index)
+    nodes.push(
+      <p key={`p-${index}`} className="text-sm leading-relaxed">
+        {renderInline(line, `p-${index}`)}
+      </p>
+    )
+  })
+
+  flushBullets(lines.length + 1)
+  flushNumbers(lines.length + 2)
+
+  return nodes
+}
+
+function formatThreadTime(date: Date): string {
+  return date.toLocaleDateString([], { month: "short", day: "numeric" })
+}
+
+type PersistedThread = Omit<ChatThread, "createdAt" | "updatedAt" | "messages"> & {
+  createdAt: string
+  updatedAt: string
+  messages: Array<Omit<Message, "timestamp"> & { timestamp: string }>
+}
+
+function toPersistedThreads(threads: ChatThread[]): PersistedThread[] {
+  return threads.map((thread) => ({
+    ...thread,
+    createdAt: thread.createdAt.toISOString(),
+    updatedAt: thread.updatedAt.toISOString(),
+    messages: thread.messages.map((message) => ({
+      ...message,
+      timestamp: message.timestamp.toISOString()
+    }))
+  }))
+}
+
+function fromPersistedThreads(raw: string): ChatThread[] {
+  const parsed = JSON.parse(raw) as PersistedThread[]
+  if (!Array.isArray(parsed)) return []
+
+  return parsed.map((thread) => ({
+    ...thread,
+    createdAt: new Date(thread.createdAt),
+    updatedAt: new Date(thread.updatedAt),
+    messages: (thread.messages ?? []).map((message) => ({
+      ...message,
+      timestamp: new Date(message.timestamp)
+    }))
+  }))
+}
+
+export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "default" }: AIAdvisorProps) {
+  const [threads, setThreads] = useState<ChatThread[]>([])
+  const [activeThreadId, setActiveThreadId] = useState("")
+  const [inputMessage, setInputMessage] = useState("")
+  const [loadingThreadId, setLoadingThreadId] = useState<string | null>(null)
+  const [agentStep, setAgentStep] = useState(0)
+  const [openTraceId, setOpenTraceId] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(false)
+
+  const chatEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const threadStorageKey = `${CHAT_THREADS_STORAGE_PREFIX}:${storageNamespace}`
+  const activeThreadStorageKey = `${ACTIVE_THREAD_STORAGE_PREFIX}:${storageNamespace}`
+
+  const sortedThreads = useMemo(
+    () => [...threads].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
+    [threads]
+  )
+
+  const activeThread = useMemo(
+    () => threads.find((thread) => thread.id === activeThreadId) ?? sortedThreads[0] ?? null,
+    [activeThreadId, sortedThreads, threads]
+  )
+
+  const activeMessages = activeThread?.messages ?? []
+  const isLoading = loadingThreadId === activeThread?.id
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [activeMessages, isLoading, openTraceId, activeThread?.id])
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(CHAT_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Array<
-        Omit<Message, "timestamp"> & { timestamp: string }
-      >;
-      if (!Array.isArray(parsed) || parsed.length === 0) return;
-      setMessages(
-        parsed.map((m) => ({
-          ...m,
-          timestamp: new Date(m.timestamp),
-        })),
-      );
+      const storedThreads = localStorage.getItem(threadStorageKey)
+      const storedActiveThread = localStorage.getItem(activeThreadStorageKey)
+
+      if (storedThreads) {
+        const parsedThreads = fromPersistedThreads(storedThreads)
+        if (parsedThreads.length > 0) {
+          setThreads(parsedThreads)
+          const activeId =
+            storedActiveThread && parsedThreads.some((thread) => thread.id === storedActiveThread)
+              ? storedActiveThread
+              : parsedThreads[0].id
+          setActiveThreadId(activeId)
+          setHydrated(true)
+          return
+        }
+      }
+
+      const legacyRaw = localStorage.getItem(LEGACY_CHAT_STORAGE_KEY)
+      if (legacyRaw) {
+        const legacyMessages = JSON.parse(legacyRaw) as Array<
+          Omit<Message, "timestamp"> & { timestamp: string }
+        >
+        if (Array.isArray(legacyMessages) && legacyMessages.length > 0) {
+          const migrated = createThread("Previous Chat")
+          migrated.messages = legacyMessages.map((message) => ({
+            ...message,
+            timestamp: new Date(message.timestamp)
+          }))
+          migrated.updatedAt = new Date()
+          setThreads([migrated])
+          setActiveThreadId(migrated.id)
+          setHydrated(true)
+          return
+        }
+      }
     } catch {
-      // ignore malformed cache
+      // ignore malformed cache and regenerate below
     }
-  }, []);
+
+    const initial = createThread()
+    setThreads([initial])
+    setActiveThreadId(initial.id)
+    setHydrated(true)
+  }, [activeThreadStorageKey, threadStorageKey])
 
   useEffect(() => {
-    const payload = messages.map((m) => ({
-      ...m,
-      timestamp: m.timestamp.toISOString(),
-    }));
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(payload));
-  }, [messages]);
+    if (!hydrated) return
+    localStorage.setItem(threadStorageKey, JSON.stringify(toPersistedThreads(threads)))
+    localStorage.setItem(activeThreadStorageKey, activeThreadId)
+  }, [activeThreadId, hydrated, threadStorageKey, activeThreadStorageKey, threads])
 
   useEffect(() => {
     if (!isLoading) {
-      setAgentStep(0);
-      return;
+      setAgentStep(0)
+      return
     }
     const id = window.setInterval(() => {
-      setAgentStep((s) => (s + 1) % AGENT_STEPS.length);
-    }, 1200);
-    return () => window.clearInterval(id);
-  }, [isLoading]);
+      setAgentStep((step) => (step + 1) % AGENT_STEPS.length)
+    }, 1200)
+    return () => window.clearInterval(id)
+  }, [isLoading])
 
-  function resetChat() {
-    const fresh = { ...START_MESSAGE, timestamp: new Date() };
-    setMessages([fresh]);
-    setInputMessage("");
-    localStorage.removeItem(CHAT_STORAGE_KEY);
+  useEffect(() => {
+    if (!activeThread && sortedThreads.length > 0) {
+      setActiveThreadId(sortedThreads[0].id)
+    }
+  }, [activeThread, sortedThreads])
+
+  function createNewThread() {
+    const thread = createThread()
+    setThreads((prev) => [thread, ...prev])
+    setActiveThreadId(thread.id)
+    setInputMessage("")
+    setOpenTraceId(null)
+  }
+
+  function updateThreadMessages(
+    threadId: string,
+    updater: (messages: Message[], existingTitle: string) => { messages: Message[]; title: string }
+  ) {
+    setThreads((prev) =>
+      prev.map((thread) => {
+        if (thread.id !== threadId) return thread
+        const next = updater(thread.messages, thread.title)
+        return {
+          ...thread,
+          title: next.title,
+          messages: next.messages,
+          updatedAt: new Date()
+        }
+      })
+    )
+  }
+
+  function clearCurrentChat() {
+    if (!activeThread) return
+    updateThreadMessages(activeThread.id, () => ({
+      messages: [createWelcomeMessage()],
+      title: "New Chat"
+    }))
+    setInputMessage("")
+    setOpenTraceId(null)
+  }
+
+  function deleteThread(threadId: string) {
+    setThreads((prev) => {
+      if (prev.length === 1) {
+        const fresh = createThread()
+        setActiveThreadId(fresh.id)
+        return [fresh]
+      }
+
+      const next = prev.filter((thread) => thread.id !== threadId)
+      if (threadId === activeThreadId && next.length > 0) {
+        setActiveThreadId(next[0].id)
+      }
+      return next
+    })
   }
 
   async function sendMessage(textOverride?: string) {
-    const text = (textOverride ?? inputMessage).trim();
-    if (!text || isLoading) return;
+    const text = (textOverride ?? inputMessage).trim()
+    if (!text || isLoading) return
+
+    let currentThreadId = activeThread?.id
+    if (!currentThreadId) {
+      const thread = createThread()
+      setThreads((prev) => [thread, ...prev])
+      setActiveThreadId(thread.id)
+      currentThreadId = thread.id
+    }
 
     const userMessage: Message = {
       id: `u-${Date.now()}`,
       role: "user",
       content: text,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
-    setIsLoading(true);
+      timestamp: new Date()
+    }
+
+    updateThreadMessages(currentThreadId, (messages, existingTitle) => ({
+      messages: [...messages, userMessage],
+      title: existingTitle === "New Chat" ? makeThreadTitle(text) : existingTitle
+    }))
+    setInputMessage("")
+    setLoadingThreadId(currentThreadId)
 
     try {
-      const agent: AgentAdviceResponse = await getAgentAdvice(text);
+      const agent = await getAgentAdvice(text)
       const assistantMessage: Message = {
         id: `a-${Date.now()}`,
         role: "assistant",
         content: agent.response,
         timestamp: new Date(),
         modelUsed: agent.model_used,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+        meta: {
+          intent: agent.intent,
+          usedTools: agent.used_tools,
+          toolSummaries: agent.tool_summaries,
+          knowledgeSources: agent.knowledge_sources,
+          webSources: agent.web_sources,
+          rag: agent.rag
+        }
+      }
+
+      updateThreadMessages(currentThreadId, (messages, existingTitle) => ({
+        messages: [...messages, assistantMessage],
+        title: existingTitle
+      }))
     } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : "Unable to generate advice now.";
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `e-${Date.now()}`,
-          role: "assistant",
-          content: msg,
-          timestamp: new Date(),
-          modelUsed: "error",
-        },
-      ]);
+      const messageText =
+        error instanceof Error ? error.message : "Unable to generate advice now."
+
+      updateThreadMessages(currentThreadId, (messages, existingTitle) => ({
+        messages: [
+          ...messages,
+          {
+            id: `e-${Date.now()}`,
+            role: "assistant",
+            content: messageText,
+            timestamp: new Date(),
+            modelUsed: "error"
+          }
+        ],
+        title: existingTitle
+      }))
     } finally {
-      setIsLoading(false);
-      inputRef.current?.focus();
+      setLoadingThreadId(null)
+      inputRef.current?.focus()
     }
   }
 
+  const isFullscreen = layout === "fullscreen"
+
   return (
-    <div className="w-full flex justify-center">
-      <div className="w-full max-w-5xl">
-        <div className="h-[calc(100vh-11rem)] min-h-[620px] rounded-2xl border border-slate-800 bg-[#020617]/95 shadow-[0_20px_60px_rgba(2,6,23,0.55)] flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/70 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/15 border border-cyan-400/30">
-                <Bot className="h-5 w-5 text-cyan-300" />
+    <div
+      className={
+        isFullscreen
+          ? "grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[280px,minmax(0,1fr)]"
+          : "w-full space-y-3"
+      }
+    >
+      {isFullscreen ? (
+        <aside className="min-h-0 rounded-2xl border border-slate-800 bg-slate-950/80 p-3">
+          <button
+            type="button"
+            onClick={createNewThread}
+            className="mb-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20"
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+            New Chat
+          </button>
+
+          <div className="max-h-[calc(100vh-13rem)] space-y-2 overflow-y-auto pr-1">
+            {sortedThreads.map((thread) => (
+              <div
+                key={thread.id}
+                onClick={() => setActiveThreadId(thread.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    setActiveThreadId(thread.id)
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                  activeThread?.id === thread.id
+                    ? "border-cyan-400/60 bg-cyan-500/10"
+                    : "border-slate-800 bg-slate-900/70 hover:border-slate-700"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="line-clamp-2 text-xs font-medium text-slate-100">{thread.title}</p>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      deleteThread(thread.id)
+                    }}
+                    className="rounded p-1 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300"
+                    title="Delete chat"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  {thread.messages.length} messages • {formatThreadTime(thread.updatedAt)}
+                </p>
               </div>
-              <div>
-                <h3 className="text-slate-100 font-semibold">BurryAI Advisor</h3>
-                <p className="text-xs text-slate-400">
-                  Monthly income ${userData.monthlyIncome.toLocaleString()} • Expenses $
-                  {userData.monthlyExpenses.toLocaleString()}
+            ))}
+          </div>
+        </aside>
+      ) : (
+        <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2">
+          <button
+            type="button"
+            onClick={createNewThread}
+            className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20"
+          >
+            <MessageSquarePlus className="h-3.5 w-3.5" />
+            New Chat
+          </button>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="chat-thread-select" className="text-xs text-slate-400">
+              Chats
+            </label>
+            <select
+              id="chat-thread-select"
+              value={activeThread?.id ?? ""}
+              onChange={(event) => setActiveThreadId(event.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+            >
+              {sortedThreads.map((thread) => (
+                <option key={thread.id} value={thread.id}>
+                  {thread.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`min-h-0 rounded-2xl border border-slate-800 bg-[#020617]/95 shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
+          isFullscreen ? "h-full" : "h-[calc(100vh-11rem)] min-h-[620px]"
+        } flex flex-col overflow-hidden`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/70 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/15">
+              <Bot className="h-5 w-5 text-cyan-300" />
+            </div>
+            <div>
+              <h3 className="text-slate-100 font-semibold">BurryAI Advisor</h3>
+              <p className="text-xs text-slate-400">
+                Monthly income ${userData.monthlyIncome.toLocaleString()} • Expenses $
+                {userData.monthlyExpenses.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1 text-xs text-cyan-300">
+              <Sparkles className="h-3 w-3" />
+              AI Agent
+            </div>
+            <button
+              type="button"
+              onClick={clearCurrentChat}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear Chat
+            </button>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center gap-2 border-b border-slate-800 bg-slate-950/60 px-5 py-2 text-xs text-cyan-200">
+            <Search className="h-3.5 w-3.5 animate-pulse" />
+            {AGENT_STEPS[agentStep]}
+          </div>
+        ) : null}
+
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+          {activeMessages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
+            >
+              <div
+                className={`max-w-[88%] rounded-2xl px-4 py-3 ${
+                  message.role === "assistant"
+                    ? "bg-slate-900 border border-slate-800 text-slate-100"
+                    : "bg-gradient-to-br from-cyan-400 to-cyan-300 text-slate-950"
+                }`}
+              >
+                {message.role === "assistant" ? (
+                  <div className="relative">
+                    {message.meta ? (
+                      <button
+                        type="button"
+                        onClick={() => setOpenTraceId((prev) => (prev === message.id ? null : message.id))}
+                        className="absolute right-0 top-0 inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-cyan-200"
+                        title="Show agent details"
+                        aria-label="Show agent details"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
+
+                    <div className={message.meta ? "pr-8 space-y-1" : "space-y-1"}>
+                      {renderAssistantContent(message.content)}
+                    </div>
+
+                    {openTraceId === message.id && message.meta ? (
+                      <div className="mt-3 rounded-xl border border-cyan-500/20 bg-slate-950/70 p-3 text-xs text-slate-300 space-y-2">
+                        <p>
+                          <span className="text-slate-400">Intent:</span> {message.meta.intent}
+                        </p>
+                        <p>
+                          <span className="text-slate-400">Model:</span> {normalizeModelName(message.modelUsed)}
+                        </p>
+                        <p>
+                          <span className="text-slate-400">RAG:</span> {message.meta.rag.knowledge_count} knowledge chunks, {message.meta.rag.web_count} web results, search triggered: {message.meta.rag.web_search_triggered ? "yes" : "no"}
+                        </p>
+                        <p>
+                          <span className="text-slate-400">Tools:</span>{" "}
+                          {message.meta.usedTools.join(", ") || "none"}
+                        </p>
+
+                        {message.meta.toolSummaries.length > 0 ? (
+                          <div className="space-y-1">
+                            <p className="text-slate-400">Tool outputs:</p>
+                            {message.meta.toolSummaries.map((tool) => (
+                              <p key={`${message.id}-${tool.name}`}>
+                                {tool.name}: {tool.summary}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {message.meta.knowledgeSources.length > 0 ? (
+                          <div className="space-y-1">
+                            <p className="text-slate-400">Knowledge sources:</p>
+                            {message.meta.knowledgeSources.map((source, index) => (
+                              <p key={`${message.id}-k-${index}`}>
+                                {source.title} ({source.source})
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {message.meta.webSources.length > 0 ? (
+                          <div className="space-y-1">
+                            <p className="text-slate-400">Web sources:</p>
+                            {message.meta.webSources.map((source, index) => (
+                              <p key={`${message.id}-w-${index}`}>
+                                <a
+                                  href={source.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-cyan-300 underline decoration-cyan-500/50 underline-offset-2 break-all"
+                                >
+                                  {source.title || source.url}
+                                </a>{" "}
+                                ({source.source})
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                )}
+
+                <p className="mt-2 text-[11px] opacity-70">
+                  {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1 text-xs text-cyan-300">
-                <Sparkles className="h-3 w-3" />
-                AI Agent
-              </div>
-              <button
-                type="button"
-                onClick={resetChat}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Reset
-              </button>
-            </div>
-          </div>
+          ))}
 
           {isLoading ? (
-            <div className="border-b border-slate-800 bg-slate-950/60 px-5 py-2 text-xs text-cyan-200 flex items-center gap-2">
-              <Search className="h-3.5 w-3.5 animate-pulse" />
-              {AGENT_STEPS[agentStep]}
+            <div className="flex justify-start">
+              <div className="flex items-center gap-2 rounded-2xl border border-cyan-500/20 bg-slate-900 px-4 py-3 text-xs text-slate-300">
+                <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                Agent is working...
+              </div>
             </div>
           ) : null}
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
-              >
-                <div
-                  className={`max-w-[88%] rounded-2xl px-4 py-3 ${
-                    message.role === "assistant"
-                      ? "bg-slate-900 border border-slate-800 text-slate-100"
-                      : "bg-gradient-to-br from-cyan-400 to-cyan-300 text-slate-950"
-                  }`}
+          <div ref={chatEndRef} />
+        </div>
+
+        {activeMessages.length <= 2 ? (
+          <div className="border-t border-slate-800 bg-slate-950/80 px-4 py-3">
+            <div className="flex flex-wrap gap-2">
+              {QUICK_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => void sendMessage(prompt)}
+                  disabled={isLoading}
+                  className="rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/15 disabled:opacity-40"
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                  <p className="mt-2 text-[11px] opacity-70">
-                    {message.timestamp.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
-
-            {isLoading ? (
-              <div className="flex justify-start">
-                <div className="rounded-2xl bg-slate-900 border border-cyan-500/20 px-4 py-3 text-xs text-slate-300 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
-                  Agent is working...
-                </div>
-              </div>
-            ) : null}
-
-            <div ref={chatEndRef} />
+                  {prompt}
+                </button>
+              ))}
+            </div>
           </div>
+        ) : null}
 
-          {messages.length <= 2 ? (
-            <div className="border-t border-slate-800 bg-slate-950/80 px-4 py-3">
-              <div className="flex flex-wrap gap-2">
-                {QUICK_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => void sendMessage(prompt)}
-                    disabled={isLoading}
-                    className="rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/15 disabled:opacity-40"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="border-t border-slate-800 bg-slate-950/90 p-4">
-            <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void sendMessage();
-                  }
-                }}
-                placeholder="Ask about budgeting, savings, debt, or spending..."
-                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
-              />
-              <button
-                onClick={() => void sendMessage()}
-                disabled={isLoading || !inputMessage.trim()}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-500 text-slate-950 disabled:opacity-40"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
+        <div className="border-t border-slate-800 bg-slate-950/90 p-4">
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              value={inputMessage}
+              onChange={(event) => setInputMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault()
+                  void sendMessage()
+                }
+              }}
+              placeholder="Ask about budgeting, savings, debt, or spending..."
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
+            />
+            <button
+              onClick={() => void sendMessage()}
+              disabled={isLoading || !inputMessage.trim() || !hydrated}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-500 text-slate-950 disabled:opacity-40"
+            >
+              <Send className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
-
