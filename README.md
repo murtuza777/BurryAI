@@ -4,6 +4,8 @@ AI-first personal finance copilot focused on students and early-career users.
 
 BurryAI combines real financial tracking (income, expenses, loans), deterministic analytics, and an agentic advisor pipeline to deliver practical recommendations such as spending control, debt optimization, and income opportunities.
 
+For final-year project documentation with multiple architecture diagrams and viva-ready explanation, see `UNIVERSITY_PROJECT_EXPLANATION.md`.
+
 ## Why BurryAI
 
 - Most budgeting tools only visualize data; BurryAI also explains what to do next.
