@@ -65,18 +65,18 @@ jobs:
             sed -i "s/\"database_id\": \"[^\"]*\"/\"database_id\": \"$D1_DATABASE_ID\"/" burryai-worker/wrangler.jsonc
           fi
 
-          npx wrangler whoami
-          npx wrangler d1 info burryai-db --config burryai-worker/wrangler.jsonc
+          npx wrangler@4.75.0 whoami
+          npx wrangler@4.75.0 d1 info burryai-db --config burryai-worker/wrangler.jsonc
 
-          npx wrangler d1 migrations apply burryai-db --config burryai-worker/wrangler.jsonc --remote
-          npx wrangler secret put JWT_SECRET --config burryai-worker/wrangler.jsonc <<< "$JWT_SECRET"
-          if [ -n "$GEMINI_API_KEY" ]; then npx wrangler secret put GEMINI_API_KEY --config burryai-worker/wrangler.jsonc <<< "$GEMINI_API_KEY"; fi
-          if [ -n "$TAVILY_API_KEY" ]; then npx wrangler secret put TAVILY_API_KEY --config burryai-worker/wrangler.jsonc <<< "$TAVILY_API_KEY"; fi
-          if [ -n "$SERPER_API_KEY" ]; then npx wrangler secret put SERPER_API_KEY --config burryai-worker/wrangler.jsonc <<< "$SERPER_API_KEY"; fi
+          npx wrangler@4.75.0 d1 migrations apply burryai-db --config burryai-worker/wrangler.jsonc --remote
+          npx wrangler@4.75.0 secret put JWT_SECRET --config burryai-worker/wrangler.jsonc <<< "$JWT_SECRET"
+          if [ -n "$GEMINI_API_KEY" ]; then npx wrangler@4.75.0 secret put GEMINI_API_KEY --config burryai-worker/wrangler.jsonc <<< "$GEMINI_API_KEY"; fi
+          if [ -n "$TAVILY_API_KEY" ]; then npx wrangler@4.75.0 secret put TAVILY_API_KEY --config burryai-worker/wrangler.jsonc <<< "$TAVILY_API_KEY"; fi
+          if [ -n "$SERPER_API_KEY" ]; then npx wrangler@4.75.0 secret put SERPER_API_KEY --config burryai-worker/wrangler.jsonc <<< "$SERPER_API_KEY"; fi
 
           # Ensure the Vectorize index used by FINANCE_KB_INDEX exists.
           # Safe to run repeatedly; creation will be skipped if it already exists.
-          npx wrangler vectorize create financial-data --dimensions=768 --metric=cosine || echo "Vectorize index create skipped or already exists"
+          npx wrangler@4.75.0 vectorize create financial-data --dimensions=768 --metric=cosine || echo "Vectorize index create skipped or already exists"
 
           npm run deploy:worker
 
@@ -87,4 +87,6 @@ jobs:
           WORKER_API_BASE_URL: ${{ vars.WORKER_API_BASE_URL }}
           NEXT_PUBLIC_WORKER_API_BASE_URL: ${{ vars.NEXT_PUBLIC_WORKER_API_BASE_URL }}
           NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
-        run: npm run deploy:cloudflare:web
+        run: |
+          npm run build:cloudflare:web
+          npx opennextjs-cloudflare deploy -c wrangler.frontend.jsonc || npx opennextjs-cloudflare deploy -c wrangler.frontend.jsonc
