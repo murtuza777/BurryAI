@@ -9,7 +9,7 @@ export function selectToolsByIntent(intent: AgentIntent): AgentToolName[] {
     case "savings":
       return ["getFinancialProfile", "costCutter", "financialHealth"]
     case "income":
-      return ["getFinancialProfile", "financialHealth", "costCutter"]
+      return ["getFinancialProfile", "financialHealth", "costCutter", "incomeOpportunities"]
     default:
       return ["getFinancialProfile", "getExpenses", "loanOptimizer", "financialHealth"]
   }

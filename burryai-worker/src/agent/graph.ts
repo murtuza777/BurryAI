@@ -29,7 +29,13 @@ export async function runFinancialAgent(params: {
     db: params.db,
     userId: params.userId,
     selectedTools,
-    context
+    context,
+    userMessage: params.userMessage,
+    searchEnv: {
+      provider: params.webSearchProvider,
+      tavilyApiKey: params.tavilyApiKey,
+      serperApiKey: params.serperApiKey
+    }
   })
   const knowledgeChunks = await retrieveKnowledgeContext({
     query: params.userMessage,

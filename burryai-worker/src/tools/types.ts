@@ -1,13 +1,16 @@
 import { z } from "zod"
 import type { AgentContextData, AgentToolName, AgentToolOutput } from "../agent/state"
+import type { SearchProviderEnv } from "../web/search.provider"
 
 export const baseToolInputSchema = z.object({
   userId: z.string().trim().min(1),
-  context: z.custom<AgentContextData>()
+  context: z.custom<AgentContextData>(),
+  userMessage: z.string().optional()
 })
 
 export type ToolExecutionContext = {
   db: D1Database
+  searchEnv?: SearchProviderEnv
 }
 
 export type ToolDefinition<TInput extends z.ZodType, TOutput extends z.ZodType> = {

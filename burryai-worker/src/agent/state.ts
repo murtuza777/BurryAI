@@ -6,6 +6,7 @@ export type AgentToolName =
   | "costCutter"
   | "financialHealth"
   | "loanOptimizer"
+  | "incomeOpportunities"
 
 export type AgentContextData = {
   monthlyIncome: number

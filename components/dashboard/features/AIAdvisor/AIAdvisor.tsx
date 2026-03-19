@@ -51,7 +51,8 @@ const QUICK_PROMPTS = [
   "Analyze my spending breakdown",
   "How can I save more monthly?",
   "Build me a debt payoff plan",
-  "Compare income vs expenses"
+  "Compare income vs expenses",
+  "Find nearby and remote extra earning opportunities"
 ]
 
 const AGENT_STEPS = [

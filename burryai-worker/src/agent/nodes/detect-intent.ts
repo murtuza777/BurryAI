@@ -3,7 +3,21 @@ import type { AgentIntent } from "../state"
 const intentKeywords: Array<{ intent: AgentIntent; keywords: string[] }> = [
   { intent: "debt", keywords: ["loan", "debt", "interest", "repayment", "emi", "payment"] },
   { intent: "savings", keywords: ["save", "savings", "emergency fund", "goal", "invest"] },
-  { intent: "income", keywords: ["income", "earn", "salary", "side hustle", "extra money"] },
+  {
+    intent: "income",
+    keywords: [
+      "income",
+      "earn",
+      "salary",
+      "side hustle",
+      "extra money",
+      "job",
+      "internship",
+      "part time",
+      "freelance",
+      "gig"
+    ]
+  },
   { intent: "budgeting", keywords: ["budget", "spending", "expense", "cut cost", "reduce"] }
 ]
 

@@ -86,7 +86,8 @@ describe("tool registry execution", () => {
         topExpenseCategories: [{ category: "Food", amount: 420 }],
         totalLoanBalance: 9000
       },
-      selectedTools: ["getFinancialProfile", "getExpenses", "financialHealth", "loanOptimizer"]
+      selectedTools: ["getFinancialProfile", "getExpenses", "financialHealth", "loanOptimizer"],
+      userMessage: "Build a plan for my debt and spending."
     })
 
     expect(outputs).toHaveLength(4)

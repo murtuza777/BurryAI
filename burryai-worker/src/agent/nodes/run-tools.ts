@@ -6,11 +6,19 @@ export async function runSelectedTools(params: {
   userId: string
   selectedTools: AgentToolName[]
   context: AgentContextData
+  userMessage: string
+  searchEnv?: {
+    provider?: string
+    tavilyApiKey?: string
+    serperApiKey?: string
+  }
 }): Promise<AgentToolOutput[]> {
   return executeTools({
     db: params.db,
     userId: params.userId,
     context: params.context,
-    selectedTools: params.selectedTools
+    selectedTools: params.selectedTools,
+    userMessage: params.userMessage,
+    searchEnv: params.searchEnv
   })
 }
