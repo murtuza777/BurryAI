@@ -7,12 +7,22 @@ const API_BASE = (() => {
 })()
 
 export type RiskTolerance = "low" | "moderate" | "high"
+export type WorkMode = "local" | "remote" | "hybrid"
 
 export interface FinancialProfile {
   full_name: string
   country: string
   student_status: string
   university: string
+  profession: string
+  skills: string[]
+  other_talents: string[]
+  preferred_work_mode: WorkMode
+  city: string
+  state_region: string
+  remote_regions: string[]
+  opportunity_radius_km: number
+  min_hourly_rate: number
   onboarding_completed: boolean
   monthly_income: number
   currency: string
@@ -107,7 +117,12 @@ export interface AgentAdviceResponse {
   model_used: string
   intent: "budgeting" | "debt" | "savings" | "income" | "general"
   used_tools: Array<
-    "getFinancialProfile" | "getExpenses" | "costCutter" | "financialHealth" | "loanOptimizer"
+    | "getFinancialProfile"
+    | "getExpenses"
+    | "costCutter"
+    | "financialHealth"
+    | "loanOptimizer"
+    | "incomeOpportunities"
   >
   knowledge_sources: Array<{ title: string; source: string }>
   web_sources: Array<{ title: string; url: string; source: "tavily" | "serper" | "none" }>
@@ -298,6 +313,55 @@ export interface CostAnalysisResponse {
   knowledge_sources: Array<{ title: string; source: string }>
 }
 
+export interface OpportunitySearchInput {
+  query?: string
+  mode?: "auto" | WorkMode
+  include_internships?: boolean
+  include_part_time?: boolean
+  include_freelance?: boolean
+  remote_regions?: string[]
+  radius_km?: number
+  max_results?: number
+}
+
+export interface OpportunitySearchResponse {
+  opportunities: Array<{
+    id: string
+    title: string
+    url: string
+    source: "tavily" | "serper" | "none"
+    snippet: string
+    location: string
+    work_mode: "local" | "remote" | "hybrid" | "unknown"
+    opportunity_type: "internship" | "part-time" | "freelance" | "job" | "gig" | "unknown"
+    score: number
+    matched_skills: string[]
+    match_reasons: string[]
+    near_user_location: boolean
+    remote_friendly: boolean
+  }>
+  filters_applied: {
+    mode: "local" | "remote" | "hybrid"
+    include_internships: boolean
+    include_part_time: boolean
+    include_freelance: boolean
+    remote_regions: string[]
+    radius_km: number
+  }
+  profile_summary: {
+    profession: string
+    skills: string[]
+    location: {
+      city: string
+      state_region: string
+      country: string
+      university: string
+    }
+    preferred_work_mode: WorkMode
+  }
+  generated_queries: string[]
+}
+
 export async function getCostAnalysis(): Promise<CostAnalysisResponse> {
   const response = await apiRequest("agent/cost-analysis", {
     method: "POST",
@@ -307,6 +371,20 @@ export async function getCostAnalysis(): Promise<CostAnalysisResponse> {
   })
   if (!response.ok) throw new Error(await parseError(response))
   return (await response.json()) as CostAnalysisResponse
+}
+
+export async function searchOpportunities(
+  input: OpportunitySearchInput
+): Promise<OpportunitySearchResponse> {
+  const response = await apiRequest("opportunities/search", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(input)
+  })
+  if (!response.ok) throw new Error(await parseError(response))
+  return (await response.json()) as OpportunitySearchResponse
 }
 
 export async function deleteExpense(id: string): Promise<void> {

@@ -10,6 +10,7 @@ import { handleAppError } from "./middleware/error-handler"
 import { requestContext, getMetricsSnapshot } from "./middleware/request-context"
 import { createRateLimit } from "./middleware/rate-limit"
 import profileRoutes from "./routes/profile"
+import opportunitiesRoutes from "./routes/opportunities"
 import type { AppEnv } from "./types"
 
 const app = new Hono<AppEnv>()
@@ -72,6 +73,10 @@ app.route("/financial-summary", financialSummaryRoutes)
 app.route("/api/financial-summary", financialSummaryRoutes)
 app.route("/dashboard", dashboardRoutes)
 app.route("/api/dashboard", dashboardRoutes)
+app.use("/opportunities/*", agentRateLimit)
+app.use("/api/opportunities/*", agentRateLimit)
+app.route("/opportunities", opportunitiesRoutes)
+app.route("/api/opportunities", opportunitiesRoutes)
 app.use("/agent/*", agentRateLimit)
 app.use("/api/agent/*", agentRateLimit)
 app.route("/agent", agentRoutes)
