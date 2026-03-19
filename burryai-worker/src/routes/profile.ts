@@ -5,6 +5,11 @@ import { getFullProfile, updateFullProfile } from "../services/profile"
 import type { AppEnv } from "../types"
 
 const riskToleranceSchema = z.enum(["low", "moderate", "high"])
+const workModeSchema = z.enum(["local", "remote", "hybrid"])
+const listFieldSchema = z
+  .array(z.string().trim().min(1).max(60))
+  .max(50)
+  .optional()
 
 const profileUpdateSchema = z
   .object({
@@ -12,6 +17,15 @@ const profileUpdateSchema = z
     country: z.string().trim().max(80).optional(),
     student_status: z.string().trim().max(50).optional(),
     university: z.string().trim().max(120).optional(),
+    profession: z.string().trim().max(120).optional(),
+    skills: listFieldSchema,
+    other_talents: listFieldSchema,
+    preferred_work_mode: workModeSchema.optional(),
+    city: z.string().trim().max(80).optional(),
+    state_region: z.string().trim().max(80).optional(),
+    remote_regions: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+    opportunity_radius_km: z.coerce.number().int().min(1).max(500).optional(),
+    min_hourly_rate: z.coerce.number().nonnegative().optional(),
     onboarding_completed: z.boolean().optional(),
     monthly_income: z.coerce.number().nonnegative().optional(),
     currency: z
