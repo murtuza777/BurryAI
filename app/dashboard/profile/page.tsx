@@ -15,7 +15,8 @@ import {
   createLoan,
   getFinancialProfile,
   updateFinancialProfile,
-  type RiskTolerance
+  type RiskTolerance,
+  type WorkMode
 } from '@/lib/financial-client'
 
 type ProfileForm = {
@@ -23,9 +24,33 @@ type ProfileForm = {
   country: string
   student_status: string
   university: string
+  profession: string
+  skills_csv: string
+  other_talents_csv: string
+  preferred_work_mode: WorkMode
+  city: string
+  state_region: string
+  remote_regions_csv: string
+  opportunity_radius_km: number
+  min_hourly_rate: number
   monthly_income: number
   savings_goal: number
   risk_tolerance: RiskTolerance
+}
+
+function toCsv(items: string[]): string {
+  return items.join(', ')
+}
+
+function fromCsv(input: string): string[] {
+  return Array.from(
+    new Set(
+      input
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
+    )
+  )
 }
 
 export default function DashboardProfilePage() {
@@ -40,6 +65,15 @@ export default function DashboardProfilePage() {
     country: '',
     student_status: '',
     university: '',
+    profession: '',
+    skills_csv: '',
+    other_talents_csv: '',
+    preferred_work_mode: 'hybrid',
+    city: '',
+    state_region: '',
+    remote_regions_csv: '',
+    opportunity_radius_km: 25,
+    min_hourly_rate: 0,
     monthly_income: 0,
     savings_goal: 0,
     risk_tolerance: 'moderate'
@@ -73,6 +107,15 @@ export default function DashboardProfilePage() {
         country: profileData.country,
         student_status: profileData.student_status,
         university: profileData.university,
+        profession: profileData.profession || '',
+        skills_csv: toCsv(profileData.skills || []),
+        other_talents_csv: toCsv(profileData.other_talents || []),
+        preferred_work_mode: profileData.preferred_work_mode || 'hybrid',
+        city: profileData.city || '',
+        state_region: profileData.state_region || '',
+        remote_regions_csv: toCsv(profileData.remote_regions || []),
+        opportunity_radius_km: profileData.opportunity_radius_km || 25,
+        min_hourly_rate: profileData.min_hourly_rate || 0,
         monthly_income: profileData.monthly_income,
         savings_goal: profileData.savings_goal,
         risk_tolerance: profileData.risk_tolerance
@@ -99,6 +142,15 @@ export default function DashboardProfilePage() {
         country: profileForm.country,
         student_status: profileForm.student_status,
         university: profileForm.university,
+        profession: profileForm.profession,
+        skills: fromCsv(profileForm.skills_csv),
+        other_talents: fromCsv(profileForm.other_talents_csv),
+        preferred_work_mode: profileForm.preferred_work_mode,
+        city: profileForm.city,
+        state_region: profileForm.state_region,
+        remote_regions: fromCsv(profileForm.remote_regions_csv),
+        opportunity_radius_km: Number(profileForm.opportunity_radius_km || 25),
+        min_hourly_rate: Number(profileForm.min_hourly_rate || 0),
         monthly_income: Number(profileForm.monthly_income || 0),
         savings_goal: Number(profileForm.savings_goal || 0),
         risk_tolerance: profileForm.risk_tolerance
@@ -108,6 +160,15 @@ export default function DashboardProfilePage() {
         country: updated.country,
         student_status: updated.student_status,
         university: updated.university,
+        profession: updated.profession || '',
+        skills_csv: toCsv(updated.skills || []),
+        other_talents_csv: toCsv(updated.other_talents || []),
+        preferred_work_mode: updated.preferred_work_mode || 'hybrid',
+        city: updated.city || '',
+        state_region: updated.state_region || '',
+        remote_regions_csv: toCsv(updated.remote_regions || []),
+        opportunity_radius_km: updated.opportunity_radius_km || 25,
+        min_hourly_rate: updated.min_hourly_rate || 0,
         monthly_income: updated.monthly_income,
         savings_goal: updated.savings_goal,
         risk_tolerance: updated.risk_tolerance
@@ -281,6 +342,112 @@ export default function DashboardProfilePage() {
                   <option value="moderate">Moderate</option>
                   <option value="high">High</option>
                 </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-xl border border-slate-700/60 bg-slate-950/50 p-5 lg:col-span-2">
+            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/90">Income Opportunities Profile</h4>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="profession">Profession / target role</Label>
+                <Input
+                  id="profession"
+                  value={profileForm.profession}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, profession: event.target.value }))}
+                  className="border-cyan-500/30 bg-slate-950/70"
+                  placeholder="Frontend Developer"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="preferred_work_mode">Preferred mode</Label>
+                <select
+                  id="preferred_work_mode"
+                  value={profileForm.preferred_work_mode}
+                  onChange={(event) =>
+                    setProfileForm((prev) => ({ ...prev, preferred_work_mode: event.target.value as WorkMode }))
+                  }
+                  className="h-10 w-full rounded-md border border-cyan-500/30 bg-slate-950/70 px-3 text-sm outline-none focus:border-cyan-300"
+                >
+                  <option value="local">Local</option>
+                  <option value="remote">Remote</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="skills_csv">Skills (comma separated)</Label>
+                <Input
+                  id="skills_csv"
+                  value={profileForm.skills_csv}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, skills_csv: event.target.value }))}
+                  className="border-cyan-500/30 bg-slate-950/70"
+                  placeholder="React, JavaScript, UI Design"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="other_talents_csv">Other talents (comma separated)</Label>
+                <Input
+                  id="other_talents_csv"
+                  value={profileForm.other_talents_csv}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, other_talents_csv: event.target.value }))}
+                  className="border-cyan-500/30 bg-slate-950/70"
+                  placeholder="Tutoring, Content writing, Video editing"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  value={profileForm.city}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, city: event.target.value }))}
+                  className="border-cyan-500/30 bg-slate-950/70"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state_region">State / region</Label>
+                <Input
+                  id="state_region"
+                  value={profileForm.state_region}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, state_region: event.target.value }))}
+                  className="border-cyan-500/30 bg-slate-950/70"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="remote_regions_csv">Remote regions (comma separated)</Label>
+                <Input
+                  id="remote_regions_csv"
+                  value={profileForm.remote_regions_csv}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, remote_regions_csv: event.target.value }))}
+                  className="border-cyan-500/30 bg-slate-950/70"
+                  placeholder="United States, Canada, Europe"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="opportunity_radius_km">Nearby radius (km)</Label>
+                <Input
+                  id="opportunity_radius_km"
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={profileForm.opportunity_radius_km}
+                  onChange={(event) =>
+                    setProfileForm((prev) => ({ ...prev, opportunity_radius_km: Number(event.target.value || 25) }))
+                  }
+                  className="border-cyan-500/30 bg-slate-950/70"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="min_hourly_rate">Minimum hourly rate</Label>
+                <Input
+                  id="min_hourly_rate"
+                  type="number"
+                  min={0}
+                  value={profileForm.min_hourly_rate}
+                  onChange={(event) =>
+                    setProfileForm((prev) => ({ ...prev, min_hourly_rate: Number(event.target.value || 0) }))
+                  }
+                  className="border-cyan-500/30 bg-slate-950/70"
+                />
               </div>
             </div>
           </div>
