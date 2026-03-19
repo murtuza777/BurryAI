@@ -2,7 +2,7 @@ import type { AgentWebResult } from "../agent/state"
 
 type ProviderName = "tavily" | "serper"
 
-type SearchProviderEnv = {
+export type SearchProviderEnv = {
   provider?: string
   tavilyApiKey?: string
   serperApiKey?: string
@@ -115,6 +115,35 @@ function shouldSearchWeb(intent: string, message: string): boolean {
   )
 }
 
+export async function searchWebByQuery(params: {
+  query: string
+  env: SearchProviderEnv
+  topK?: number
+  cacheScope?: string
+}): Promise<AgentWebResult[]> {
+  const topK = Math.max(1, Math.min(params.topK ?? 3, 10))
+  const provider = (params.env.provider?.toLowerCase() ?? "tavily") as ProviderName
+  const normalizedQuery = params.query.trim()
+  if (!normalizedQuery) return []
+
+  const scopePrefix = params.cacheScope?.trim() ? `${params.cacheScope.trim()}:` : ""
+  const key = `${scopePrefix}${cacheKey(provider, normalizedQuery)}`
+  const cached = readCache(key)
+  if (cached) return cached.slice(0, topK)
+
+  let results: AgentWebResult[] = []
+  if (provider === "serper" && params.env.serperApiKey) {
+    results = await searchWithSerper(normalizedQuery, params.env.serperApiKey, topK)
+  } else if (params.env.tavilyApiKey) {
+    results = await searchWithTavily(normalizedQuery, params.env.tavilyApiKey, topK)
+  } else if (params.env.serperApiKey) {
+    results = await searchWithSerper(normalizedQuery, params.env.serperApiKey, topK)
+  }
+
+  writeCache(key, results)
+  return results.slice(0, topK)
+}
+
 export async function searchWebForIncomeIdeas(params: {
   intent: string
   message: string
@@ -127,24 +156,14 @@ export async function searchWebForIncomeIdeas(params: {
   }
 
   const topK = Math.max(1, Math.min(params.topK ?? 3, 5))
-  const provider = (params.env.provider?.toLowerCase() ?? "tavily") as ProviderName
   const query =
     params.intent === "income"
       ? `student side hustle opportunities ${params.message}`
       : `student personal finance advice ${params.message}`
-  const key = cacheKey(provider, query)
-  const cached = readCache(key)
-  if (cached) return cached
-
-  let results: AgentWebResult[] = []
-  if (provider === "serper" && params.env.serperApiKey) {
-    results = await searchWithSerper(query, params.env.serperApiKey, topK)
-  } else if (params.env.tavilyApiKey) {
-    results = await searchWithTavily(query, params.env.tavilyApiKey, topK)
-  } else if (params.env.serperApiKey) {
-    results = await searchWithSerper(query, params.env.serperApiKey, topK)
-  }
-
-  writeCache(key, results)
-  return results
+  return await searchWebByQuery({
+    query,
+    env: params.env,
+    topK,
+    cacheScope: "income-ideas"
+  })
 }
