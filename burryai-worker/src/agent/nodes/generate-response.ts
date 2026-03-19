@@ -138,8 +138,13 @@ async function generateWithGemini(
   preferredModel: string | undefined,
   prompt: string
 ): Promise<GeminiGenerationResult | null> {
-  const modelCandidates = [preferredModel, "gemini-2.0-flash", "gemini-1.5-flash"]
-    .filter((model): model is string => typeof model === "string" && model.length > 0)
+  const modelCandidates = Array.from(
+    new Set(
+      [preferredModel, "gemini-2.0-flash", "gemini-1.5-flash"].filter(
+        (model): model is string => typeof model === "string" && model.length > 0
+      )
+    )
+  )
 
   const errors: string[] = []
 
@@ -179,7 +184,7 @@ async function generateWithGemini(
 
         // On rate limit (429) or server error (5xx), wait before trying the next model
         if (response.status === 429 || response.status >= 500) {
-          await new Promise((resolve) => setTimeout(resolve, 1500))
+          await new Promise((resolve) => setTimeout(resolve, 500))
         }
         continue
       }
