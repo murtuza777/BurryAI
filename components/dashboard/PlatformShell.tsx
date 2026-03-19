@@ -14,6 +14,7 @@ import { getFinancialProfile } from '@/lib/financial-client'
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/dashboard/advisor', label: 'AI Advisor' },
+  { href: '/dashboard/opportunities', label: 'Opportunities' },
   { href: '/dashboard/cost-cutter', label: 'Cost Cutter' },
   { href: '/dashboard/timeline', label: 'Timeline' }
 ]
@@ -111,8 +112,8 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
               <BrandIdentity size={30} textClassName="text-xl font-semibold text-cyan-200" />
             </div>
 
-            <nav className="order-3 w-full rounded-full border border-slate-800 bg-slate-900/60 p-1.5 md:order-2 md:w-auto md:min-w-[500px]">
-              <div className="grid grid-cols-2 gap-1.5 md:grid-cols-4">
+            <nav className="order-3 w-full rounded-full border border-slate-800 bg-slate-900/60 p-1.5 md:order-2 md:w-auto md:min-w-[620px]">
+              <div className="grid grid-cols-2 gap-1.5 md:grid-cols-5">
                 {NAV_ITEMS.map((item) => {
                   const active = isActiveNav(pathname, item.href)
                   return (
