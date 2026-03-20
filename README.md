@@ -16,9 +16,11 @@ For final-year project documentation with multiple architecture diagrams and viv
 
 - **Overview Dashboard**: total income, expenses, loan commitments, health score, charts, and projections.
 - **AI Advisor**: personalized guidance based on your profile, spending trends, and goals.
+- **Opportunities**: real job, internship, freelance, and campus-hiring discovery with local and remote filters.
 - **Cost Cutter**: identifies avoidable spending and high-impact optimization actions.
 - **Timeline**: upcoming financial events and repayment checkpoints.
 - **Profile + Onboarding**: user setup and financial context required for accurate recommendations.
+- **Opportunity Profile**: profession, skills, location, work mode, and remote regions for job matching.
 - **Guest mode**: lets users explore the app before creating an account.
 
 ## Architecture
@@ -44,6 +46,7 @@ flowchart LR
 - **Backend**: Cloudflare Workers, Hono, Zod
 - **Database**: Cloudflare D1 (SQLite-compatible)
 - **AI**: Gemini, tool-based agent pipeline, optional Vectorize RAG
+- **Opportunities**: listings aggregator with source-aware ranking and filtering
 - **Charts/UI**: Recharts + custom dashboard components
 
 ## Repository Structure

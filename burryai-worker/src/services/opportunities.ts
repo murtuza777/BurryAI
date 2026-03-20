@@ -295,12 +295,16 @@ function cleanListingTitle(title: string, sourceSite: string): string {
   return title
     .replace(new RegExp(`\\s+[|\\-]\\s+${sourceSite}.*$`, "i"), "")
     .replace(/\s+[|\-]\s+(Jobs|Careers|Hiring).*$/i, "")
+    .replace(/\s+\b(Apply now|Apply today|Learn more|Join us)\b.*$/i, "")
     .trim()
 }
 
 function extractCompany(title: string, sourceSite: string): string {
   const cleanedTitle = cleanListingTitle(title, sourceSite)
-  const parts = cleanedTitle.split(/\s+[|\-]\s+/).map((part) => part.trim()).filter(Boolean)
+  const parts = cleanedTitle
+    .split(/\s+[|\-@•]\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
 
   if (parts.length >= 2) {
     return parts[1]
