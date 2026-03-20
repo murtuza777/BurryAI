@@ -1,6 +1,7 @@
 import { env, createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { beforeAll, describe, expect, it } from "vitest"
 import worker from "../src/index"
+import { __private__ as opportunitiesPrivate } from "../src/services/opportunities"
 
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>
 
@@ -47,6 +48,27 @@ async function signupUser(testEnv: TestEnv): Promise<{ userId: string; cookie: s
 }
 
 describe("Opportunities route", () => {
+  it("classifies direct job boards and blocks non-listing media", () => {
+    expect(
+      opportunitiesPrivate.classifySource({
+        url: "https://www.linkedin.com/jobs/view/123456789",
+        text: "frontend engineer remote hiring",
+        university: ""
+      })
+    ).toEqual({
+      sourceSite: "LinkedIn",
+      listingQuality: "high"
+    })
+
+    expect(
+      opportunitiesPrivate.classifySource({
+        url: "https://www.youtube.com/watch?v=abc123",
+        text: "best remote jobs video",
+        university: ""
+      }).listingQuality
+    ).toBeNull()
+  })
+
   beforeAll(async () => {
     await env.DB.exec(
       "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
