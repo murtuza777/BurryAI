@@ -328,8 +328,11 @@ export interface OpportunitySearchResponse {
   opportunities: Array<{
     id: string
     title: string
+    company: string
     url: string
     source: "tavily" | "serper" | "none"
+    source_site: string
+    listing_quality: "high" | "medium" | "community"
     snippet: string
     location: string
     work_mode: "local" | "remote" | "hybrid" | "unknown"
