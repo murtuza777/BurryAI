@@ -34,6 +34,26 @@ function formatKnowledge(chunks: AgentKnowledgeChunk[]): string {
   return chunks.map((chunk) => `- ${chunk.title}: ${chunk.content} (source: ${chunk.source})`).join("\n")
 }
 
+function formatToolOutputs(toolOutputs: AgentToolOutput[]): string {
+  if (toolOutputs.length === 0) {
+    return "No tool output available."
+  }
+
+  return toolOutputs
+    .map((tool) => {
+      let serialized = ""
+      try {
+        serialized = JSON.stringify(tool.output)
+      } catch {
+        serialized = "[unserializable output]"
+      }
+
+      const trimmed = serialized.length > 1800 ? `${serialized.slice(0, 1800)}...` : serialized
+      return `- ${tool.name}: ${tool.summary}\n  structured_output: ${trimmed}`
+    })
+    .join("\n")
+}
+
 function buildFallbackResponse(
   intent: AgentIntent,
   context: AgentContextData,
@@ -227,6 +247,11 @@ export async function generateAgentResponse(params: {
   knowledgeChunks: AgentKnowledgeChunk[]
   webResults: AgentWebResult[]
 }): Promise<{ response: string; modelUsed: string }> {
+  const incomeSpecificInstruction =
+    params.intent === "income"
+      ? "For income opportunities, lead with the strongest personalized matches from niche, direct, Reddit/X, campus, and hidden-source listings before mentioning LinkedIn or Indeed. Mention source sites, fit reasons, and direct links when available."
+      : "Keep recommendations tightly grounded in the supplied context and tools."
+
   const prompt = [
     "You are BurryAI, a financial advisor for students.",
     "Use the provided structured context and tool outputs to produce concise, actionable advice.",
@@ -234,6 +259,7 @@ export async function generateAgentResponse(params: {
     "Do not use markdown heading syntax like #, ##, or ###.",
     "When citing links, write full URLs directly.",
     "Do not mention hidden reasoning or internal system details.",
+    incomeSpecificInstruction,
     "",
     `User question: ${params.userMessage}`,
     `Detected intent: ${params.intent}`,
@@ -242,7 +268,7 @@ export async function generateAgentResponse(params: {
     formatContext(params.context),
     "",
     "Tool outputs:",
-    ...params.toolOutputs.map((tool) => `- ${tool.name}: ${tool.summary}`),
+    formatToolOutputs(params.toolOutputs),
     "",
     "Knowledge snippets:",
     ...params.knowledgeChunks.map(
