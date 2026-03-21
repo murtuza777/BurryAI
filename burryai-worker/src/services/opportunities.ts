@@ -94,6 +94,28 @@ const COMMUNITY_PATHS = [
 const ARTICLE_TERMS = /\b(best|top|guide|tips|how to|course|video|blog|review)\b/i
 const LISTING_TERMS =
   /\b(job|jobs|career|careers|hiring|opening|openings|role|position|positions|internship|internships|part[-\s]?time|full[-\s]?time|freelance|contract|gig)\b/i
+const FRESHNESS_TERMS =
+  /\b(just posted|newly posted|recently posted|today|urgent|hiring now|actively hiring|immediate start|new opening)\b/i
+
+const PRIORITY_DIRECT_SOURCES = new Set([
+  "Greenhouse",
+  "Lever",
+  "Workday",
+  "SmartRecruiters",
+  "Ashby",
+  "Campus"
+])
+
+const PRIORITY_DISCOVERY_SOURCES = new Set([
+  "Wellfound",
+  "Y Combinator",
+  "Internshala",
+  "Upwork",
+  "Reddit",
+  "X"
+])
+
+const POPULAR_BOARDS = new Set(["LinkedIn", "Indeed"])
 
 function compactTokenList(items: string[]): string[] {
   return Array.from(
@@ -347,6 +369,7 @@ function buildQueries(params: {
   includeInternships: boolean
   includePartTime: boolean
   includeFreelance: boolean
+  remoteRegions: string[]
   radiusKm: number
 }): string[] {
   const role = params.profession.trim() || params.skills[0] || "student"
@@ -354,6 +377,7 @@ function buildQueries(params: {
   const communityTalent = params.otherTalents[0] || params.skills[0] || role
   const localHint = [params.city, params.state_region, params.country].filter(Boolean).join(" ").trim()
   const locationHint = localHint || params.university.trim() || "student campus"
+  const remoteHint = params.remoteRegions.length > 0 ? params.remoteRegions.slice(0, 2).join(" ") : "worldwide"
 
   const typeHints = [
     params.includeInternships ? "internship" : "",
@@ -365,34 +389,60 @@ function buildQueries(params: {
 
   const queries: string[] = []
   if (params.query?.trim()) {
+    queries.push(
+      `${params.query.trim()} site:jobs.lever.co OR site:boards.greenhouse.io OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com`
+    )
+    queries.push(`${params.query.trim()} site:wellfound.com/jobs OR site:ycombinator.com/jobs`)
+    queries.push(`${params.query.trim()} hiring site:reddit.com/r/forhire OR site:reddit.com/r/jobs`)
+    queries.push(`${params.query.trim()} hiring site:x.com OR site:twitter.com`)
     queries.push(`${params.query.trim()} site:linkedin.com/jobs/view`)
     queries.push(`${params.query.trim()} site:indeed.com/viewjob`)
   }
 
   if (params.mode !== "remote") {
-    queries.push(`${role} ${skillHint} ${typeHints} ${locationHint} site:linkedin.com/jobs/view`)
-    queries.push(`${role} ${typeHints} ${locationHint} site:indeed.com/viewjob`)
     queries.push(`${role} ${locationHint} jobs site:jobs.lever.co OR site:boards.greenhouse.io`)
+    queries.push(`${role} ${skillHint} ${typeHints} ${locationHint} site:myworkdayjobs.com OR site:jobs.ashbyhq.com`)
+    queries.push(`${role} ${skillHint} ${typeHints} ${locationHint} site:wellfound.com/jobs`)
     if (params.includeInternships) {
-      queries.push(`${role} internship ${locationHint} site:linkedin.com/jobs/view`)
+      queries.push(`${role} internship ${locationHint} site:internshala.com OR site:ycombinator.com/jobs`)
     }
     if (params.university.trim()) {
       queries.push(`"${params.university.trim()}" student jobs internship careers`)
     }
+    queries.push(`${role} ${skillHint} ${typeHints} ${locationHint} site:linkedin.com/jobs/view`)
+    queries.push(`${role} ${typeHints} ${locationHint} site:indeed.com/viewjob`)
   }
 
   if (params.mode !== "local") {
-    queries.push(`${role} remote ${skillHint} site:linkedin.com/jobs/view`)
     queries.push(`${role} remote ${skillHint} site:jobs.lever.co OR site:boards.greenhouse.io`)
     queries.push(`${role} remote ${skillHint} site:myworkdayjobs.com OR site:smartrecruiters.com`)
+    queries.push(`${role} remote ${skillHint} ${remoteHint} site:wellfound.com/jobs OR site:ycombinator.com/jobs`)
     if (params.includeFreelance) {
       queries.push(`${communityTalent} remote freelance site:upwork.com/freelance-jobs`)
     }
     queries.push(`${role} hiring remote site:reddit.com/r/forhire OR site:reddit.com/r/jobs`)
     queries.push(`${role} hiring remote site:x.com OR site:twitter.com`)
+    queries.push(`${role} remote ${skillHint} site:linkedin.com/jobs/view`)
+    queries.push(`${role} remote ${skillHint} site:indeed.com/viewjob`)
   }
 
   return uniqueStrings(queries).slice(0, 10)
+}
+
+function sourcePriorityAdjustment(sourceSite: string, listingQuality: ListingQuality): number {
+  if (PRIORITY_DIRECT_SOURCES.has(sourceSite)) return 16
+  if (PRIORITY_DISCOVERY_SOURCES.has(sourceSite)) return 12
+  if (POPULAR_BOARDS.has(sourceSite)) return -18
+  if (listingQuality === "high") return 8
+  if (listingQuality === "community") return 5
+  return 2
+}
+
+function freshnessAdjustment(text: string): number {
+  let score = 0
+  if (FRESHNESS_TERMS.test(text)) score += 8
+  if (/\b2026\b/.test(text)) score += 2
+  return score
 }
 
 function buildOpportunityFromWeb(params: {
@@ -439,6 +489,8 @@ function buildOpportunityFromWeb(params: {
   if (sourceMeta.listingQuality === "high") score += 18
   if (sourceMeta.listingQuality === "medium") score += 8
   if (sourceMeta.listingQuality === "community") score += 6
+  score += sourcePriorityAdjustment(sourceMeta.sourceSite, sourceMeta.listingQuality)
+  score += freshnessAdjustment(text)
   if (params.preferredMode === "local" && nearby) score += 6
   if (params.preferredMode === "remote" && remoteFriendly) score += 6
   if (params.preferredMode === "hybrid" && (nearby || remoteFriendly)) score += 4
@@ -461,11 +513,17 @@ function buildOpportunityFromWeb(params: {
   } else {
     matchReasons.push(`Career page signal from ${sourceMeta.sourceSite}`)
   }
+  if (PRIORITY_DIRECT_SOURCES.has(sourceMeta.sourceSite) || PRIORITY_DISCOVERY_SOURCES.has(sourceMeta.sourceSite)) {
+    matchReasons.push("Less saturated than mainstream job boards")
+  }
   if (nearby) {
     matchReasons.push(`Near ${params.locationLabel}`)
   }
   if (remoteFriendly) {
     matchReasons.push("Remote-friendly")
+  }
+  if (FRESHNESS_TERMS.test(text)) {
+    matchReasons.push("Fresh hiring signal")
   }
 
   return {
@@ -575,6 +633,7 @@ export async function discoverOpportunities(params: {
     includeInternships,
     includePartTime,
     includeFreelance,
+    remoteRegions,
     radiusKm
   })
   const perQueryTopK = Math.max(4, Math.min(6, Math.ceil(maxResults / Math.max(1, queries.length)) + 2))
@@ -651,5 +710,6 @@ export async function discoverOpportunities(params: {
 export const __private__ = {
   classifySource,
   cleanListingTitle,
-  extractCompany
+  extractCompany,
+  sourcePriorityAdjustment
 }
