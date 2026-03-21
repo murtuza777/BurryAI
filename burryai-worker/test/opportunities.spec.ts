@@ -69,6 +69,16 @@ describe("Opportunities route", () => {
     ).toBeNull()
   })
 
+  it("prioritizes niche and direct sources above mainstream boards", () => {
+    expect(opportunitiesPrivate.sourcePriorityAdjustment("Greenhouse", "high")).toBeGreaterThan(
+      opportunitiesPrivate.sourcePriorityAdjustment("LinkedIn", "high")
+    )
+
+    expect(opportunitiesPrivate.sourcePriorityAdjustment("Reddit", "community")).toBeGreaterThan(
+      opportunitiesPrivate.sourcePriorityAdjustment("Indeed", "high")
+    )
+  })
+
   beforeAll(async () => {
     await env.DB.exec(
       "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
