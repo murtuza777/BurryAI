@@ -4,10 +4,20 @@ import { baseToolInputSchema, type ToolDefinition } from "./types"
 
 const outputSchema = z.object({
   count: z.number().int().nonnegative(),
+  generatedQueries: z.array(z.string()),
+  sourceBreakdown: z.array(
+    z.object({
+      sourceSite: z.string(),
+      count: z.number().int().positive()
+    })
+  ),
   topMatches: z.array(
     z.object({
       title: z.string(),
+      company: z.string(),
       url: z.string(),
+      sourceSite: z.string(),
+      listingQuality: z.enum(["high", "medium", "community"]),
       location: z.string(),
       workMode: z.enum(["local", "remote", "hybrid", "unknown"]),
       type: z.enum(["internship", "part-time", "freelance", "job", "gig", "unknown"]),
@@ -41,9 +51,17 @@ export const incomeOpportunitiesTool: ToolDefinition<
       searchEnv: ctx.searchEnv ?? {}
     })
 
+    const sourceBreakdownMap = new Map<string, number>()
+    for (const item of data.opportunities) {
+      sourceBreakdownMap.set(item.source_site, (sourceBreakdownMap.get(item.source_site) ?? 0) + 1)
+    }
+
     const topMatches = data.opportunities.slice(0, 4).map((item) => ({
       title: item.title,
+      company: item.company,
       url: item.url,
+      sourceSite: item.source_site,
+      listingQuality: item.listing_quality,
       location: item.location,
       workMode: item.work_mode,
       type: item.opportunity_type,
@@ -53,6 +71,10 @@ export const incomeOpportunitiesTool: ToolDefinition<
 
     return {
       count: data.opportunities.length,
+      generatedQueries: data.generated_queries,
+      sourceBreakdown: Array.from(sourceBreakdownMap.entries())
+        .map(([sourceSite, count]) => ({ sourceSite, count }))
+        .sort((a, b) => b.count - a.count),
       topMatches
     }
   },
@@ -62,8 +84,12 @@ export const incomeOpportunitiesTool: ToolDefinition<
     }
     const preview = output.topMatches
       .slice(0, 2)
-      .map((item) => item.title)
+      .map((item) => `${item.title} via ${item.sourceSite}`)
       .join("; ")
-    return `Found ${output.count} opportunity matches. Top picks: ${preview}.`
+    const sourcePreview = output.sourceBreakdown
+      .slice(0, 3)
+      .map((item) => `${item.sourceSite} (${item.count})`)
+      .join(", ")
+    return `Found ${output.count} current opportunity matches with hidden sources prioritized ahead of LinkedIn and Indeed. Top picks: ${preview}. Source mix: ${sourcePreview}.`
   }
 }
