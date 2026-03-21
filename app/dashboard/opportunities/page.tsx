@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowRight,
   Briefcase,
+  ChevronDown,
+  ChevronUp,
   Building2,
   ExternalLink,
   Filter,
@@ -20,12 +22,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import FinanceLoader from '@/components/ui/FinanceLoader'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   getFinancialProfile,
   searchOpportunities,
-  updateFinancialProfile,
   type OpportunitySearchInput,
   type OpportunitySearchResponse,
   type WorkMode
@@ -83,9 +83,9 @@ function ToggleButton(props: {
       type="button"
       onClick={props.onClick}
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition',
+        'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition',
         props.active
-          ? 'border-cyan-300/80 bg-cyan-300 text-slate-950 shadow-[0_12px_30px_rgba(34,211,238,0.2)]'
+          ? 'border-cyan-300/80 bg-cyan-300 text-slate-950 shadow-[0_10px_24px_rgba(34,211,238,0.16)]'
           : 'border-slate-700 bg-slate-950/70 text-slate-300 hover:border-cyan-400/60 hover:text-slate-100'
       )}
     >
@@ -100,8 +100,8 @@ export default function DashboardOpportunitiesPage() {
   const { isGuest, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(true)
-  const [savingProfile, setSavingProfile] = useState(false)
   const [searching, setSearching] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   const [error, setError] = useState('')
   const [searchResult, setSearchResult] = useState<OpportunitySearchResponse | null>(null)
 
@@ -140,7 +140,7 @@ export default function DashboardOpportunitiesPage() {
       setError('')
       try {
         const profile = await getFinancialProfile()
-        setProfileDraft({
+        const nextDraft = {
           profession: profile.profession || '',
           skillsCsv: toCsv(profile.skills || []),
           talentsCsv: toCsv(profile.other_talents || []),
@@ -151,14 +151,39 @@ export default function DashboardOpportunitiesPage() {
           remoteRegionsCsv: toCsv(profile.remote_regions || []),
           radiusKm: profile.opportunity_radius_km || 25,
           minHourlyRate: profile.min_hourly_rate || 0
-        })
+        }
+
+        setProfileDraft(nextDraft)
         setFilters((prev) => ({
           ...prev,
           radiusKm: profile.opportunity_radius_km || 25
         }))
+
+        if (
+          isOpportunityProfileConfigured({
+            profession: nextDraft.profession,
+            skillsCsv: nextDraft.skillsCsv,
+            talentsCsv: nextDraft.talentsCsv
+          })
+        ) {
+          setSearching(true)
+          const payload = await searchOpportunities({
+            mode: 'auto',
+            include_internships: true,
+            include_part_time: true,
+            include_freelance: false,
+            remote_regions: fromCsv(nextDraft.remoteRegionsCsv),
+            radius_km: Number(nextDraft.radiusKm || 25),
+            max_results: 18
+          })
+          setSearchResult(payload)
+        } else {
+          setSearchResult(null)
+        }
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Failed to load profile defaults')
       } finally {
+        setSearching(false)
         setLoading(false)
       }
     }
@@ -178,7 +203,7 @@ export default function DashboardOpportunitiesPage() {
   )
 
   async function runSearch(overrides?: Partial<OpportunitySearchInput>) {
-    if (isGuest) return
+    if (isGuest || !hasSavedOpportunityProfile) return
 
     setSearching(true)
     setError('')
@@ -199,41 +224,6 @@ export default function DashboardOpportunitiesPage() {
       setError(searchError instanceof Error ? searchError.message : 'Failed to search opportunities')
     } finally {
       setSearching(false)
-    }
-  }
-
-  async function handleSaveProfileDefaults() {
-    if (isGuest) return
-
-    setSavingProfile(true)
-    setError('')
-    try {
-      await updateFinancialProfile({
-        profession: profileDraft.profession.trim(),
-        skills: fromCsv(profileDraft.skillsCsv),
-        other_talents: fromCsv(profileDraft.talentsCsv),
-        preferred_work_mode: profileDraft.preferredMode,
-        city: profileDraft.city.trim(),
-        state_region: profileDraft.stateRegion.trim(),
-        country: profileDraft.country.trim(),
-        remote_regions: remoteRegions,
-        opportunity_radius_km: Number(profileDraft.radiusKm || 25),
-        min_hourly_rate: Number(profileDraft.minHourlyRate || 0)
-      })
-
-      setFilters((prev) => ({
-        ...prev,
-        mode: 'auto',
-        radiusKm: Number(profileDraft.radiusKm || 25)
-      }))
-      await runSearch({
-        mode: 'auto',
-        radius_km: Number(profileDraft.radiusKm || 25)
-      })
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Failed to save opportunity profile')
-    } finally {
-      setSavingProfile(false)
     }
   }
 
@@ -272,7 +262,7 @@ export default function DashboardOpportunitiesPage() {
 
           {hasSavedOpportunityProfile ? (
             <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-              Opportunity profile is saved. Edit it from your main profile anytime.
+              Opportunity profile is saved in Profile details.
             </div>
           ) : null}
         </div>
@@ -292,7 +282,7 @@ export default function DashboardOpportunitiesPage() {
                   className="border-slate-700 bg-slate-900/70 text-slate-100 hover:bg-slate-800"
                 >
                   <PencilLine className="mr-2 h-4 w-4" />
-                  Edit in Profile
+                  Profile details
                 </Button>
               </div>
 
@@ -333,140 +323,24 @@ export default function DashboardOpportunitiesPage() {
           <div className="mt-6 rounded-[2rem] border border-slate-800/80 bg-slate-950/55 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-slate-100">Set your opportunity profile once</h2>
+                <h2 className="text-xl font-semibold text-slate-100">Add opportunity details in Profile</h2>
                 <p className="mt-1 text-sm text-slate-300">
-                  After saving, this setup disappears from this page and stays editable in Profile.
+                  This page now stays focused on discovery. Add your role, skills, location, work mode, and other talents in Profile details.
                 </p>
               </div>
-              <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">Required for quality matches</Badge>
+              <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">Profile required for quality matches</Badge>
             </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="profession">Profession / target role</Label>
-                <Input
-                  id="profession"
-                  value={profileDraft.profession}
-                  onChange={(event) => setProfileDraft((prev) => ({ ...prev, profession: event.target.value }))}
-                  className="border-cyan-500/30 bg-slate-950/70"
-                  placeholder="Frontend Developer"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="preferredMode">Preferred work mode</Label>
-                <div className="flex flex-wrap gap-2">
-                  {(['local', 'remote', 'hybrid'] as WorkMode[]).map((mode) => (
-                    <ToggleButton
-                      key={mode}
-                      active={profileDraft.preferredMode === mode}
-                      label={mode[0].toUpperCase() + mode.slice(1)}
-                      onClick={() => setProfileDraft((prev) => ({ ...prev, preferredMode: mode }))}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="skillsCsv">Skills</Label>
-                <Input
-                  id="skillsCsv"
-                  value={profileDraft.skillsCsv}
-                  onChange={(event) => setProfileDraft((prev) => ({ ...prev, skillsCsv: event.target.value }))}
-                  className="border-cyan-500/30 bg-slate-950/70"
-                  placeholder="React, JavaScript, Figma"
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="talentsCsv">Other talents</Label>
-                <Input
-                  id="talentsCsv"
-                  value={profileDraft.talentsCsv}
-                  onChange={(event) => setProfileDraft((prev) => ({ ...prev, talentsCsv: event.target.value }))}
-                  className="border-cyan-500/30 bg-slate-950/70"
-                  placeholder="Tutoring, Content writing, Video editing"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={profileDraft.city}
-                  onChange={(event) => setProfileDraft((prev) => ({ ...prev, city: event.target.value }))}
-                  className="border-cyan-500/30 bg-slate-950/70"
-                  placeholder="Boston"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stateRegion">State / region</Label>
-                <Input
-                  id="stateRegion"
-                  value={profileDraft.stateRegion}
-                  onChange={(event) => setProfileDraft((prev) => ({ ...prev, stateRegion: event.target.value }))}
-                  className="border-cyan-500/30 bg-slate-950/70"
-                  placeholder="Massachusetts"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={profileDraft.country}
-                  onChange={(event) => setProfileDraft((prev) => ({ ...prev, country: event.target.value }))}
-                  className="border-cyan-500/30 bg-slate-950/70"
-                  placeholder="United States"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="remoteRegions">Remote regions</Label>
-                <Input
-                  id="remoteRegions"
-                  value={profileDraft.remoteRegionsCsv}
-                  onChange={(event) =>
-                    setProfileDraft((prev) => ({ ...prev, remoteRegionsCsv: event.target.value }))
-                  }
-                  className="border-cyan-500/30 bg-slate-950/70"
-                  placeholder="United States, Canada, Europe"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="radiusKm">Nearby radius</Label>
-                <Input
-                  id="radiusKm"
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={profileDraft.radiusKm}
-                  onChange={(event) =>
-                    setProfileDraft((prev) => ({ ...prev, radiusKm: Number(event.target.value || 25) }))
-                  }
-                  className="border-cyan-500/30 bg-slate-950/70"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="minHourlyRate">Minimum hourly rate</Label>
-                <Input
-                  id="minHourlyRate"
-                  type="number"
-                  min={0}
-                  value={profileDraft.minHourlyRate}
-                  onChange={(event) =>
-                    setProfileDraft((prev) => ({ ...prev, minHourlyRate: Number(event.target.value || 0) }))
-                  }
-                  className="border-cyan-500/30 bg-slate-950/70"
-                />
-              </div>
-            </div>
-
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Button
                 type="button"
-                onClick={() => void handleSaveProfileDefaults()}
-                disabled={savingProfile || isGuest}
+                onClick={() => router.push('/dashboard/profile')}
+                disabled={isGuest}
                 className="rounded-full border border-cyan-300/60 bg-cyan-300 px-5 py-2.5 font-semibold text-slate-950 hover:bg-cyan-200"
               >
-                {savingProfile ? 'Saving profile...' : 'Save and use this profile'}
+                Open profile details
               </Button>
               <p className="text-xs text-slate-400">
-                You will edit these details later from Profile, not from this page.
+                Opportunity research will use those saved details for personalized matches.
               </p>
             </div>
           </div>
@@ -477,17 +351,29 @@ export default function DashboardOpportunitiesPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Search Filters</p>
-            <h2 className="mt-1 text-2xl font-semibold text-slate-100">Search like a real listings platform</h2>
+            <h2 className="mt-1 text-2xl font-semibold text-slate-100">Search hidden opportunities faster</h2>
           </div>
-          {hasSavedOpportunityProfile ? (
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {hasSavedOpportunityProfile ? (
+              <div className="flex flex-wrap gap-2">
               {remoteRegions.slice(0, 3).map((region) => (
                 <Badge key={region} className="border-slate-700 bg-slate-900 text-slate-200">
                   {region}
                 </Badge>
               ))}
-            </div>
-          ) : null}
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="h-9 rounded-full border-slate-700 bg-slate-900/70 px-4 text-slate-100 hover:bg-slate-800"
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {showFilters ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-5 rounded-3xl border border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(2,6,23,0.92))] p-4">
@@ -498,101 +384,108 @@ export default function DashboardOpportunitiesPage() {
                 id="query"
                 value={filters.query}
                 onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
-                className="h-12 rounded-full border-slate-700 bg-slate-950/80 pl-11 pr-4 text-slate-100"
+                className="h-10 rounded-full border-slate-700 bg-slate-950/80 pl-11 pr-4 text-sm text-slate-100"
                 placeholder="Search role, skill, internship, company, or hiring phrase"
               />
             </div>
             <Button
               type="button"
               onClick={() => void runSearch()}
-              disabled={searching || isGuest}
-              className="h-12 rounded-full border border-cyan-300/60 bg-cyan-300 px-6 font-semibold text-slate-950 hover:bg-cyan-200"
+              disabled={searching || isGuest || !hasSavedOpportunityProfile}
+              className="h-10 rounded-full border border-cyan-300/60 bg-cyan-300 px-5 text-sm font-semibold text-slate-950 hover:bg-cyan-200"
             >
               {searching ? 'Searching...' : 'Search listings'}
             </Button>
           </div>
+          {!hasSavedOpportunityProfile ? (
+            <p className="mt-3 text-xs text-slate-400">
+              Add your opportunity details in Profile before searching so results stay personalized.
+            </p>
+          ) : null}
         </div>
 
-        <div className="mt-5 grid gap-5 xl:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-4">
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-sm text-slate-300">
-                <Filter className="h-4 w-4 text-cyan-300" />
-                Search mode
+        {showFilters ? (
+          <div className="mt-5 grid gap-4 rounded-3xl border border-slate-800/80 bg-slate-950/50 p-4 xl:grid-cols-[1.4fr_1fr]">
+            <div className="space-y-4">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm text-slate-300">
+                  <Filter className="h-4 w-4 text-cyan-300" />
+                  Search mode
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {MODE_OPTIONS.map((option) => (
+                    <ToggleButton
+                      key={option.value}
+                      active={filters.mode === option.value}
+                      label={option.label}
+                      icon={option.icon}
+                      onClick={() => setFilters((prev) => ({ ...prev, mode: option.value }))}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {MODE_OPTIONS.map((option) => (
+
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm text-slate-300">
+                  <GraduationCap className="h-4 w-4 text-cyan-300" />
+                  Opportunity type
+                </div>
+                <div className="flex flex-wrap gap-2">
                   <ToggleButton
-                    key={option.value}
-                    active={filters.mode === option.value}
-                    label={option.label}
-                    icon={option.icon}
-                    onClick={() => setFilters((prev) => ({ ...prev, mode: option.value }))}
+                    active={filters.includeInternships}
+                    label="Internships"
+                    onClick={() =>
+                      setFilters((prev) => ({ ...prev, includeInternships: !prev.includeInternships }))
+                    }
                   />
-                ))}
+                  <ToggleButton
+                    active={filters.includePartTime}
+                    label="Part-time"
+                    onClick={() =>
+                      setFilters((prev) => ({ ...prev, includePartTime: !prev.includePartTime }))
+                    }
+                  />
+                  <ToggleButton
+                    active={filters.includeFreelance}
+                    label="Freelance"
+                    onClick={() =>
+                      setFilters((prev) => ({ ...prev, includeFreelance: !prev.includeFreelance }))
+                    }
+                  />
+                </div>
               </div>
             </div>
 
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-sm text-slate-300">
-                <GraduationCap className="h-4 w-4 text-cyan-300" />
-                Opportunity type
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Search radius</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {RADIUS_OPTIONS.map((radius) => (
+                    <ToggleButton
+                      key={radius}
+                      active={filters.radiusKm === radius}
+                      label={`${radius} km`}
+                      onClick={() => setFilters((prev) => ({ ...prev, radiusKm: radius }))}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <ToggleButton
-                  active={filters.includeInternships}
-                  label="Internships"
-                  onClick={() =>
-                    setFilters((prev) => ({ ...prev, includeInternships: !prev.includeInternships }))
-                  }
-                />
-                <ToggleButton
-                  active={filters.includePartTime}
-                  label="Part-time"
-                  onClick={() =>
-                    setFilters((prev) => ({ ...prev, includePartTime: !prev.includePartTime }))
-                  }
-                />
-                <ToggleButton
-                  active={filters.includeFreelance}
-                  label="Freelance"
-                  onClick={() =>
-                    setFilters((prev) => ({ ...prev, includeFreelance: !prev.includeFreelance }))
-                  }
-                />
+              <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Result volume</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {RESULT_OPTIONS.map((count) => (
+                    <ToggleButton
+                      key={count}
+                      active={filters.maxResults === count}
+                      label={`${count} listings`}
+                      onClick={() => setFilters((prev) => ({ ...prev, maxResults: count }))}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Search radius</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {RADIUS_OPTIONS.map((radius) => (
-                  <ToggleButton
-                    key={radius}
-                    active={filters.radiusKm === radius}
-                    label={`${radius} km`}
-                    onClick={() => setFilters((prev) => ({ ...prev, radiusKm: radius }))}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Result volume</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {RESULT_OPTIONS.map((count) => (
-                  <ToggleButton
-                    key={count}
-                    active={filters.maxResults === count}
-                    label={`${count} listings`}
-                    onClick={() => setFilters((prev) => ({ ...prev, maxResults: count }))}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        ) : null}
       </section>
 
       <section className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/60 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.38)]">
@@ -612,9 +505,15 @@ export default function DashboardOpportunitiesPage() {
 
         {!searchResult ? (
           <div className="mt-6 rounded-3xl border border-dashed border-slate-700 bg-slate-950/40 p-10 text-center">
-            <p className="text-base font-medium text-slate-200">Search across direct listings and community hiring posts</p>
+            <p className="text-base font-medium text-slate-200">
+              {hasSavedOpportunityProfile
+                ? 'Search across direct listings and community hiring posts'
+                : 'Finish your opportunity profile to unlock personalized discovery'}
+            </p>
             <p className="mt-2 text-sm text-slate-400">
-              We prioritize job boards, company career pages, campus pages, Reddit, and social hiring posts.
+              {hasSavedOpportunityProfile
+                ? 'We prioritize company career pages, niche platforms, campus pages, Reddit, social hiring posts, and keep popular boards lower.'
+                : 'Use Profile details once, then this page stays focused on hidden and useful opportunities.'}
             </p>
           </div>
         ) : searchResult.opportunities.length === 0 ? (
