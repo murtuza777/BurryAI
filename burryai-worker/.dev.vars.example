@@ -1,3 +1,4 @@
 JWT_SECRET=replace-with-a-long-random-secret
-GEMINI_API_KEY=replace-with-google-gemini-api-key
-GEMINI_MODEL=gemini-2.5-pro
+AI_PRIMARY_MODEL=@cf/zai-org/glm-4.7-flash
+AI_REASONING_MODEL=@cf/qwen/qwq-32b
+AI_FALLBACK_MODEL=@cf/meta/llama-3-8b-instruct
