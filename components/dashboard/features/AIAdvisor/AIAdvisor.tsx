@@ -93,6 +93,12 @@ function makeThreadTitle(content: string): string {
 function normalizeModelName(modelUsed?: string): string {
   if (!modelUsed) return "-"
   if (modelUsed.startsWith("gemini:")) return modelUsed.slice("gemini:".length)
+  if (modelUsed.startsWith("workers-ai:")) {
+    const [providerModel, routeInfo] = modelUsed.split("|route:")
+    const cleanedModel = providerModel.replace("workers-ai:", "")
+    if (!routeInfo) return cleanedModel
+    return `${cleanedModel} (${routeInfo.replace("|selected:", ", selected: ")})`
+  }
   return modelUsed
 }
 

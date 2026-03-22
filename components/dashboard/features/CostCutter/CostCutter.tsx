@@ -48,6 +48,18 @@ function getIcon(category: string) {
   return ICON_MAP[category.toLowerCase()] ?? ShoppingBag
 }
 
+function formatModelUsed(modelUsed?: string): string {
+  if (!modelUsed) return ""
+  if (modelUsed.startsWith("gemini:")) return modelUsed.replace("gemini:", "")
+  if (modelUsed.startsWith("workers-ai:")) {
+    const [providerModel, routeInfo] = modelUsed.split("|route:")
+    const cleanedModel = providerModel.replace("workers-ai:", "")
+    if (!routeInfo) return cleanedModel
+    return `${cleanedModel} (${routeInfo.replace("|selected:", ", selected: ")})`
+  }
+  return modelUsed
+}
+
 /* Simple markdown inline formatter */
 function formatInline(text: string): JSX.Element[] {
   const parts: JSX.Element[] = []
@@ -353,7 +365,7 @@ export function CostCutter({ userData }: CostCutterProps) {
               {aiAnalysis.model_used ? (
                 <span className="text-xs text-cyan-400/70 bg-cyan-500/5 border border-cyan-500/15 rounded-full px-2.5 py-0.5 flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
-                  {aiAnalysis.model_used.startsWith("gemini:") ? aiAnalysis.model_used.replace("gemini:", "") : aiAnalysis.model_used}
+                  {formatModelUsed(aiAnalysis.model_used)}
                 </span>
               ) : null}
               <button
