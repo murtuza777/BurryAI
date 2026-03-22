@@ -5,6 +5,7 @@ import type {
   AgentToolOutput,
   AgentWebResult
 } from "../state"
+import { resolveModelRoute, selectModel } from "../model-router"
 
 function formatContext(context: AgentContextData): string {
   const topCategories =
@@ -62,8 +63,6 @@ function buildFallbackResponse(
   webResults: AgentWebResult[]
 ): string {
   const sections: string[] = []
-
-  // Opening
   const intentLabels: Record<string, string> = {
     budgeting: "budget optimization",
     debt: "debt management",
@@ -71,24 +70,29 @@ function buildFallbackResponse(
     income: "income growth",
     general: "financial overview"
   }
+
   sections.push(`${intentLabels[intent] || "Financial Analysis"}:\n`)
 
-  // Context summary
   if (context.monthlyIncome > 0 || context.monthlyExpenses > 0) {
-    const savingsRate = context.monthlyIncome > 0
-      ? Math.round(((context.monthlyIncome - context.monthlyExpenses - context.monthlyLoanPayments) / context.monthlyIncome) * 100)
-      : 0
+    const savingsRate =
+      context.monthlyIncome > 0
+        ? Math.round(
+            ((context.monthlyIncome - context.monthlyExpenses - context.monthlyLoanPayments) /
+              context.monthlyIncome) *
+              100
+          )
+        : 0
+
     sections.push(
       `**Your Financial Snapshot:**\n` +
-      `- Monthly income: **$${context.monthlyIncome.toLocaleString()}**\n` +
-      `- Monthly expenses: **$${context.monthlyExpenses.toLocaleString()}**\n` +
-      `- Loan payments: **$${context.monthlyLoanPayments.toLocaleString()}**\n` +
-      `- Financial health score: **${context.financialHealthScore}/100**\n` +
-      `- Current savings rate: **${savingsRate}%**\n`
+        `- Monthly income: **$${context.monthlyIncome.toLocaleString()}**\n` +
+        `- Monthly expenses: **$${context.monthlyExpenses.toLocaleString()}**\n` +
+        `- Loan payments: **$${context.monthlyLoanPayments.toLocaleString()}**\n` +
+        `- Financial health score: **${context.financialHealthScore}/100**\n` +
+        `- Current savings rate: **${savingsRate}%**\n`
     )
   }
 
-  // Tool insights
   if (toolOutputs.length > 0) {
     sections.push("Key Insights:\n")
     for (const tool of toolOutputs) {
@@ -97,7 +101,6 @@ function buildFallbackResponse(
     sections.push("")
   }
 
-  // Knowledge-based recommendations
   if (knowledgeChunks.length > 0) {
     sections.push("Recommendations:\n")
     for (const chunk of knowledgeChunks) {
@@ -105,7 +108,6 @@ function buildFallbackResponse(
     }
   }
 
-  // Web results
   if (webResults.length > 0) {
     sections.push("Opportunities Found:\n")
     for (const result of webResults) {
@@ -114,132 +116,101 @@ function buildFallbackResponse(
     sections.push("")
   }
 
-  // Action steps
   sections.push(
     "Action Steps:\n" +
-    "1. Set a strict weekly spending cap and track daily\n" +
-    "2. Protect minimum loan payments before discretionary spending\n" +
-    "3. Auto-transfer savings on payday to avoid spending them\n" +
-    "4. Review and cancel unused subscriptions\n"
+      "1. Set a strict weekly spending cap and track daily\n" +
+      "2. Protect minimum loan payments before discretionary spending\n" +
+      "3. Auto-transfer savings on payday to avoid spending them\n" +
+      "4. Review and cancel unused subscriptions\n"
   )
 
   return sections.join("\n")
 }
 
-type GeminiGenerationResult = {
+type WorkersAiBinding = {
+  run: (model: string, input: unknown) => Promise<unknown>
+}
+
+type GenerationResult = {
   text: string
   modelUsed: string
 }
 
-type GeminiPart = {
-  text?: string
-}
-
-type GeminiCandidate = {
-  content?: {
-    parts?: GeminiPart[]
+function extractWorkersAiText(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") {
+    return null
   }
+
+  const response = (payload as { response?: unknown }).response
+  if (typeof response === "string" && response.trim().length > 0) {
+    return response.trim()
+  }
+
+  const result = (payload as { result?: unknown }).result
+  if (typeof result === "string" && result.trim().length > 0) {
+    return result.trim()
+  }
+
+  return null
 }
 
-type GeminiResponsePayload = {
-  candidates?: GeminiCandidate[]
-}
-
-function extractGeminiText(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null
-
-  const candidates = (payload as GeminiResponsePayload).candidates
-  const firstText = candidates?.[0]?.content?.parts?.[0]?.text
-  return typeof firstText === "string" && firstText.trim().length > 0 ? firstText.trim() : null
-}
-
-async function generateWithGemini(
-  apiKey: string,
-  preferredModel: string | undefined,
+async function generateWithWorkersAi(params: {
+  aiBinding: WorkersAiBinding
+  userInput: string
+  systemPrompt: string
   prompt: string
-): Promise<GeminiGenerationResult | null> {
-  const modelCandidates = Array.from(
-    new Set(
-      [preferredModel, "gemini-2.0-flash", "gemini-1.5-flash"].filter(
-        (model): model is string => typeof model === "string" && model.length > 0
-      )
-    )
-  )
-
+  chatModel?: string
+  reasoningModel?: string
+  fallbackModel?: string
+}): Promise<GenerationResult | null> {
+  const route = resolveModelRoute(params.userInput, {
+    chatModel: params.chatModel,
+    reasoningModel: params.reasoningModel,
+    fallbackModel: params.fallbackModel
+  })
+  const selectedByHeuristic = selectModel(params.userInput)
   const errors: string[] = []
 
-  for (const model of modelCandidates) {
+  for (const model of route.modelsToTry) {
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt }]
-              }
-            ],
-            generationConfig: {
-              maxOutputTokens: 4096,
-              temperature: 0.7
-            }
-          })
-        }
-      )
+      const payload = await params.aiBinding.run(model, {
+        messages: [
+          { role: "system", content: params.systemPrompt },
+          { role: "user", content: params.prompt }
+        ],
+        max_tokens: route.taskType === "reasoning" ? 3072 : 2048,
+        temperature: route.taskType === "reasoning" ? 0.2 : 0.45
+      })
 
-      if (!response.ok) {
-        let errorBody = ""
-        try {
-          errorBody = await response.text()
-        } catch {
-          errorBody = "Could not read error body"
-        }
-        const errorMsg = `${model}: HTTP ${response.status} – ${errorBody.slice(0, 200)}`
-        console.error(`[BurryAI] Gemini API error: ${errorMsg}`)
-        errors.push(errorMsg)
-
-        // On rate limit (429) or server error (5xx), wait before trying the next model
-        if (response.status === 429 || response.status >= 500) {
-          await new Promise((resolve) => setTimeout(resolve, 500))
-        }
-        continue
-      }
-
-      const payload = (await response.json()) as unknown
-      const text = extractGeminiText(payload)
+      const text = extractWorkersAiText(payload)
       if (text) {
+        const routeLabel = model === route.primaryModel ? route.taskType : "fallback"
         return {
           text,
-          modelUsed: `gemini:${model}`
+          modelUsed: `workers-ai:${model}|route:${routeLabel}|selected:${selectedByHeuristic}`
         }
       }
 
-      errors.push(`${model}: empty response body`)
-    } catch (fetchError) {
-      const msg = fetchError instanceof Error ? fetchError.message : String(fetchError)
-      console.error(`[BurryAI] Gemini fetch error for ${model}: ${msg}`)
+      errors.push(`${model}: empty response`)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      console.error(`[BurryAI] Workers AI generation error for ${model}: ${msg}`)
       errors.push(`${model}: ${msg}`)
     }
   }
 
-  // If all models failed, include error details so we know why
   if (errors.length > 0) {
-    console.error(`[BurryAI] All Gemini models failed: ${errors.join(" | ")}`)
+    console.error(`[BurryAI] Workers AI model chain failed: ${errors.join(" | ")}`)
   }
 
   return null
 }
 
 export async function generateAgentResponse(params: {
-  apiKey?: string
-  preferredModel?: string
-  aiBinding?: {
-    run: (model: string, input: unknown) => Promise<unknown>
-  }
+  aiBinding?: WorkersAiBinding
+  chatModel?: string
+  reasoningModel?: string
+  fallbackModel?: string
   intent: AgentIntent
   userMessage: string
   context: AgentContextData
@@ -251,6 +222,9 @@ export async function generateAgentResponse(params: {
     params.intent === "income"
       ? "For income opportunities, lead with the strongest personalized matches from niche, direct, Reddit/X, campus, and hidden-source listings before mentioning LinkedIn or Indeed. Mention source sites, fit reasons, and direct links when available."
       : "Keep recommendations tightly grounded in the supplied context and tools."
+
+  const systemPrompt =
+    "You are BurryAI, a finance assistant for students and early-career users. Give concise, actionable advice. Use short paragraphs, bullet points, and numbered action steps. Do not use markdown heading syntax (#). Show calculations clearly when relevant and keep recommendations grounded in the provided data."
 
   const prompt = [
     "You are BurryAI, a financial advisor for students.",
@@ -270,6 +244,9 @@ export async function generateAgentResponse(params: {
     "Tool outputs:",
     formatToolOutputs(params.toolOutputs),
     "",
+    "Knowledge summary:",
+    formatKnowledge(params.knowledgeChunks),
+    "",
     "Knowledge snippets:",
     ...params.knowledgeChunks.map(
       (chunk) => `- ${chunk.title}: ${chunk.content} (source: ${chunk.source}, score: ${chunk.score})`
@@ -281,43 +258,27 @@ export async function generateAgentResponse(params: {
     "Return clear recommendations in plain text with short action steps, and cite knowledge/web sources inline when used."
   ].join("\n")
 
-  // Try Gemini first
-  if (params.apiKey) {
-    try {
-      const geminiResult = await generateWithGemini(params.apiKey, params.preferredModel, prompt)
-      if (geminiResult) {
-        return {
-          response: geminiResult.text,
-          modelUsed: geminiResult.modelUsed
-        }
-      }
-    } catch {
-      console.error("[BurryAI] Gemini generation threw, falling through to Workers AI")
-    }
-  }
-
-  // Try Cloudflare Workers AI as fallback
   if (params.aiBinding) {
     try {
-      const cfModel = "@cf/meta/llama-3.1-8b-instruct"
-      const cfResult = await params.aiBinding.run(cfModel, {
-        messages: [
-          { role: "system", content: "You are BurryAI, a financial advisor for students. Give concise, actionable advice. Use short paragraphs, bullet points, and numbered action steps. Do not use markdown heading syntax (#)." },
-          { role: "user", content: prompt }
-        ],
-        max_tokens: 2048,
-        temperature: 0.7
-      }) as { response?: string }
+      const workersAiResult = await generateWithWorkersAi({
+        aiBinding: params.aiBinding,
+        userInput: params.userMessage,
+        systemPrompt,
+        prompt,
+        chatModel: params.chatModel,
+        reasoningModel: params.reasoningModel,
+        fallbackModel: params.fallbackModel
+      })
 
-      if (cfResult?.response && cfResult.response.trim().length > 0) {
+      if (workersAiResult) {
         return {
-          response: cfResult.response.trim(),
-          modelUsed: "workers-ai:llama-3.1-8b-instruct"
+          response: workersAiResult.text,
+          modelUsed: workersAiResult.modelUsed
         }
       }
-    } catch (cfError) {
-      const msg = cfError instanceof Error ? cfError.message : String(cfError)
-      console.error(`[BurryAI] Workers AI fallback error: ${msg}`)
+    } catch (workersAiError) {
+      const msg = workersAiError instanceof Error ? workersAiError.message : String(workersAiError)
+      console.error(`[BurryAI] Workers AI generation pipeline error: ${msg}`)
     }
   }
 
@@ -332,4 +293,3 @@ export async function generateAgentResponse(params: {
     modelUsed: "fallback:rule-based"
   }
 }
-

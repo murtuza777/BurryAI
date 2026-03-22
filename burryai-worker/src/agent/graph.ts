@@ -11,12 +11,13 @@ export async function runFinancialAgent(params: {
   db: D1Database
   userId: string
   userMessage: string
-  geminiApiKey?: string
-  geminiModel?: string
   knowledgeIndex?: Vectorize
   aiBinding?: {
     run: (model: string, input: unknown) => Promise<unknown>
   }
+  chatModel?: string
+  reasoningModel?: string
+  fallbackModel?: string
   embeddingModel?: string
   webSearchProvider?: string
   tavilyApiKey?: string
@@ -57,9 +58,10 @@ export async function runFinancialAgent(params: {
     topK: 3
   })
   const generation = await generateAgentResponse({
-    apiKey: params.geminiApiKey,
-    preferredModel: params.geminiModel,
     aiBinding: params.aiBinding,
+    chatModel: params.chatModel,
+    reasoningModel: params.reasoningModel,
+    fallbackModel: params.fallbackModel,
     intent,
     userMessage: params.userMessage,
     context,
