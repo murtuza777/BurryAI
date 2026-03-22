@@ -37,7 +37,10 @@ flowchart LR
   TOOLS --> D1
   TOOLS --> VEC["Cloudflare Vectorize (optional RAG)"]
   TOOLS --> WEB["Web Search Provider (Serper/Tavily)"]
-  AG --> LLM["Gemini"]
+  AG --> ROUTER["Task Router"]
+  ROUTER --> CHAT["GLM 4.7 Flash\nDefault chat"]
+  ROUTER --> REASON["QWQ 32B\nReasoning + finance logic"]
+  ROUTER --> FALLBACK["Llama 3 8B Instruct\nFallback"]
 ```
 
 ## Tech Stack
@@ -45,7 +48,7 @@ flowchart LR
 - **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
 - **Backend**: Cloudflare Workers, Hono, Zod
 - **Database**: Cloudflare D1 (SQLite-compatible)
-- **AI**: Gemini, tool-based agent pipeline, optional Vectorize RAG
+- **AI**: Cloudflare Workers AI multi-model routing with `@cf/zai-org/glm-4.7-flash` (default), `@cf/qwen/qwq-32b` (reasoning), and `@cf/meta/llama-3-8b-instruct` (fallback)
 - **Opportunities**: listings aggregator with source-aware ranking and filtering
 - **Charts/UI**: Recharts + custom dashboard components
 
@@ -70,6 +73,12 @@ burryai/
 4. Worker computes deterministic metrics from D1.
 5. AI advisor combines metrics, profile context, and retrieval tools to generate guidance.
 6. Interactions are logged for traceability and product analytics.
+
+Model routing:
+
+- Simple chat and explanation requests use `@cf/zai-org/glm-4.7-flash`
+- Calculations, budgeting plans, repayment logic, and deeper reasoning use `@cf/qwen/qwq-32b`
+- If the selected model fails, the worker falls back to `@cf/meta/llama-3-8b-instruct`
 
 ## API Surface (High-Level)
 
@@ -171,7 +180,10 @@ npm run d1:migrate:local
 ### Worker Secrets / Vars
 
 - `JWT_SECRET`
-- `GEMINI_API_KEY` (recommended)
+- `AI` binding for Cloudflare Workers AI
+- `AI_PRIMARY_MODEL` (default: `@cf/zai-org/glm-4.7-flash`)
+- `AI_REASONING_MODEL` (default: `@cf/qwen/qwq-32b`)
+- `AI_FALLBACK_MODEL` (default: `@cf/meta/llama-3-8b-instruct`)
 - `SERPER_API_KEY` or `TAVILY_API_KEY` (for web retrieval)
 - `ENABLE_VECTORIZE_RAG` (`true/false`)
 - `EMBEDDING_MODEL` (default: `@cf/baai/bge-base-en-v1.5`)
@@ -195,7 +207,6 @@ Required repository secrets:
 - `CLOUDFLARE_ACCOUNT_ID`
 - `D1_DATABASE_ID`
 - `JWT_SECRET`
-- `GEMINI_API_KEY` (recommended)
 - `TAVILY_API_KEY` or `SERPER_API_KEY` (optional based on provider)
 
 ## Vectorize / RAG Setup (Optional Production Path)

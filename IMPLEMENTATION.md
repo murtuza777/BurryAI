@@ -62,9 +62,9 @@ Use this checklist as the live implementation tracker.
 - Login/signup page redesigned and app logout added.
 - Phase 6 financial agent pipeline shipped:
   - `POST /agent/advice` (+ `/api/agent/advice`) with authenticated user context.
-  - Backend-only Gemini integration with model fallback and deterministic rule fallback.
+  - Backend AI generation now runs through Cloudflare Workers AI with task-based routing: `@cf/zai-org/glm-4.7-flash` for default chat, `@cf/qwen/qwq-32b` for deeper finance reasoning, and `@cf/meta/llama-3-8b-instruct` as fallback before deterministic rules.
   - Agent metadata logging to `ai_logs` (`query`, `response`, `model_used`).
-  - Dashboard AI Advisor frontend now calls backend agent endpoint (no browser Gemini key usage).
+  - Dashboard AI Advisor frontend now calls backend agent endpoint (no browser AI provider key usage).
 - Worker deployed: `https://burryai-worker.mdmurtuzaali777.workers.dev`
 - D1 migrations applied locally and remotely up through `0002_user_profiles.sql`.
 
@@ -141,7 +141,10 @@ flowchart LR
   TOOLS --> VEC["Cloudflare Vectorize"]
   TOOLS --> R2["Cloudflare R2"]
   TOOLS --> WEB["Tavily or Serper"]
-  AG --> GEM["Gemini API"]
+  AG --> ROUTER["Workers AI Model Router"]
+  ROUTER --> CHAT["GLM 4.7 Flash"]
+  ROUTER --> REASON["QWQ 32B"]
+  ROUTER --> FALLBACK["Llama 3 8B"]
 ```
 
 ---
@@ -348,7 +351,7 @@ This is the product brain. It turns static analytics into adaptive, user-specifi
    - context builder
    - tool selection
    - response generation
-3. Integrate Gemini API from backend only.
+3. Integrate Cloudflare Workers AI from backend only with task-based model routing.
 4. Create endpoint:
    - `POST /agent/advice`
 5. Log request/response metadata into `ai_logs`.
@@ -440,7 +443,7 @@ Opportunities change frequently; static knowledge is not enough for side hustles
 
 1. Implement web search provider adapter (Tavily or Serper).
 2. Extract and normalize useful results (title, url, summary, freshness).
-3. Add summarization step using Gemini.
+3. Add summarization step using the backend AI layer, defaulting to the routed Workers AI stack.
 4. Include citations in final agent response.
 5. Cache search results for cost control and speed.
 
@@ -592,7 +595,7 @@ Start with these exact steps:
 ## 7. Important Rules for This Project
 
 - Cloudflare-only deployment: no Vercel.
-- Keep Gemini API keys on backend only.
+- Keep all AI provider configuration on backend only. For the current setup, the primary generation path is routed through Cloudflare Workers AI models.
 - Validate all inputs with Zod.
 - Keep agent responses grounded with tools + retrieval.
 - Every phase must end with testable deliverables.

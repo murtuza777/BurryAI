@@ -40,7 +40,10 @@ flowchart LR
   AG --> DB
   AG --> RAG[Vectorize RAG - Optional]
   AG --> WEB[Web Retrieval Provider]
-  AG --> LLM[Gemini]
+  AG --> ROUTER[Model Router]
+  ROUTER --> LLM1[GLM 4.7 Flash\nSimple chat]
+  ROUTER --> LLM2[QWQ 32B\nFinancial reasoning]
+  ROUTER --> LLM3[Llama 3 8B\nFallback]
   API --> LOG[(AI + Metrics Logs)]
 ```
 
@@ -49,6 +52,7 @@ flowchart LR
 - Worker API serves as the business-logic boundary.
 - D1 stores persistent financial data.
 - Agent service combines model reasoning with tools and context.
+- A lightweight model router selects the best Workers AI model per task.
 - Optional retrieval modules improve grounding and freshness.
 
 ---
@@ -131,15 +135,15 @@ sequenceDiagram
   participant API as Worker API
   participant DB as D1
   participant Agent as Agent Service
-  participant LLM as Gemini
+  participant LLM as Workers AI Router
 
   User->>UI: Ask financial advice
   UI->>API: POST /agent/advice
   API->>DB: Fetch profile + expenses + loans
   DB-->>API: Financial context
   API->>Agent: Build agent input
-  Agent->>LLM: Reason with context + tools
-  LLM-->>Agent: Draft recommendation
+  Agent->>LLM: Route to GLM or QWQ based on task complexity
+  LLM-->>Agent: Return recommendation (or fallback via Llama 3)
   Agent-->>API: Final actionable response
   API->>DB: Save ai_log
   API-->>UI: Advice JSON
@@ -246,7 +250,7 @@ For university assessment, you can evaluate:
 
 ## 14) Viva-Ready Short Pitch (60-90 seconds)
 
-BurryAI is a student-focused financial advisory platform that combines analytics and agentic AI. Instead of only showing charts, it converts financial data into actionable decisions. The architecture uses a Next.js frontend, a Cloudflare Worker backend, a D1 database, and an AI agent pipeline that retrieves user context, invokes financial tools, and synthesizes recommendations. This design improves explainability and practical usefulness compared to basic chatbot solutions, while maintaining scalability and low-latency deployment on edge infrastructure.
+BurryAI is a student-focused financial advisory platform that combines analytics and agentic AI. Instead of only showing charts, it converts financial data into actionable decisions. The architecture uses a Next.js frontend, a Cloudflare Worker backend, a D1 database, and a routed Workers AI pipeline where GLM handles fast chat, QWQ handles deeper financial reasoning, and Llama 3 acts as fallback. This design improves explainability and practical usefulness compared to basic chatbot solutions, while maintaining scalability and low-latency deployment on edge infrastructure.
 
 ---
 
