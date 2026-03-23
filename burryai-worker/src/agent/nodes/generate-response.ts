@@ -136,19 +136,63 @@ type GenerationResult = {
   modelUsed: string
 }
 
-function extractWorkersAiText(payload: unknown): string | null {
+type ChatCompletionContentPart = {
+  text?: string
+  type?: string
+}
+
+function extractContentText(content: unknown): string | null {
+  if (typeof content === "string" && content.trim().length > 0) {
+    return content.trim()
+  }
+
+  if (Array.isArray(content)) {
+    const joined = content
+      .map((part) => {
+        if (!part || typeof part !== "object") {
+          return ""
+        }
+
+        const text = (part as ChatCompletionContentPart).text
+        return typeof text === "string" ? text : ""
+      })
+      .filter(Boolean)
+      .join("\n")
+      .trim()
+
+    return joined.length > 0 ? joined : null
+  }
+
+  return null
+}
+
+export function extractWorkersAiText(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") {
     return null
   }
 
   const response = (payload as { response?: unknown }).response
-  if (typeof response === "string" && response.trim().length > 0) {
-    return response.trim()
+  const responseText = extractContentText(response)
+  if (responseText) {
+    return responseText
   }
 
   const result = (payload as { result?: unknown }).result
-  if (typeof result === "string" && result.trim().length > 0) {
-    return result.trim()
+  const resultText = extractContentText(result)
+  if (resultText) {
+    return resultText
+  }
+
+  const choices = (payload as {
+    choices?: Array<{
+      message?: {
+        content?: unknown
+      }
+    }>
+  }).choices
+  const choiceText = extractContentText(choices?.[0]?.message?.content)
+  if (choiceText) {
+    return choiceText
   }
 
   return null
