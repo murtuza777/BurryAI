@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { HolographicButton, HolographicCard } from './dashboard/HolographicUI'
+import FinanceLoader from './ui/FinanceLoader'
 import {
   Brain,
   Sparkles,
@@ -17,10 +18,12 @@ import {
 import Scene3D from './3d/Scene3D'
 import { useRouter } from 'next/navigation'
 import { BrandIdentity } from './BrandIdentity'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const router = useRouter()
+  const { user, isGuest } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,6 +32,16 @@ export default function LandingPage() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    if (user || isGuest) {
+      router.replace('/dashboard')
+    }
+  }, [isGuest, router, user])
+
+  if (user || isGuest) {
+    return <FinanceLoader />
+  }
 
   const features = [
     {
