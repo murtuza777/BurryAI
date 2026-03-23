@@ -64,7 +64,7 @@ const FinanceLoader = () => {
           transition={{ duration: 1.5, repeat: Infinity }}
           className="text-sm text-cyan-200/70 mt-2"
         >
-          Analyzing Market Data...
+          Analyzing your financial data...
         </motion.p>
       </motion.div>
     </div>

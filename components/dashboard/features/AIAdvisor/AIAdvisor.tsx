@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Bot, Info, Loader2, MessageSquarePlus, Search, Send, Sparkles, Trash2 } from "lucide-react"
+import { Bot, ChevronLeft, ChevronRight, Info, Loader2, MessageSquarePlus, Search, Trash2 } from "lucide-react"
 import { getAgentAdvice, type AgentAdviceResponse } from "@/lib/financial-client"
+import { ChatInput, ChatInputSubmit, ChatInputTextArea } from "@/components/ui/chat-input"
 
 type MessageMeta = {
   intent: AgentAdviceResponse["intent"]
@@ -66,7 +67,8 @@ function createWelcomeMessage(): Message {
   return {
     id: `welcome-${Date.now()}`,
     role: "assistant",
-    content: "Hi! I am BurryAI. Ask anything about budgeting, debt, spending, and savings.",
+    content:
+      "Welcome to BurryAI Advisor. I can help analyze your income vs expenses, build debt and savings plans, and suggest practical ways to boost earnings. Tell me your top money goal for this month and I will create a focused plan.",
     timestamp: new Date(),
     modelUsed: "system"
   }
@@ -299,9 +301,10 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
   const [agentStep, setAgentStep] = useState(0)
   const [openTraceId, setOpenTraceId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const chatEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const threadStorageKey = `${CHAT_THREADS_STORAGE_PREFIX}:${storageNamespace}`
   const activeThreadStorageKey = `${ACTIVE_THREAD_STORAGE_PREFIX}:${storageNamespace}`
@@ -522,11 +525,13 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     <div
       className={
         isFullscreen
-          ? "grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[280px,minmax(0,1fr)]"
+          ? `grid h-full min-h-0 grid-cols-1 gap-4 ${
+              sidebarOpen ? "lg:grid-cols-[280px,minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)]"
+            }`
           : "w-full space-y-3"
       }
     >
-      {isFullscreen ? (
+      {isFullscreen && sidebarOpen ? (
         <aside className="min-h-0 rounded-2xl border border-slate-800 bg-slate-950/80 p-3">
           <button
             type="button"
@@ -577,7 +582,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
             ))}
           </div>
         </aside>
-      ) : (
+      ) : !isFullscreen ? (
         <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2">
           <button
             type="button"
@@ -606,7 +611,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
             </select>
           </div>
         </div>
-      )}
+      ) : null}
 
       <div
         className={`min-h-0 rounded-2xl border border-slate-800 bg-[#020617]/95 shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
@@ -628,10 +633,17 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1 text-xs text-cyan-300">
-              <Sparkles className="h-3 w-3" />
-              AI Agent
-            </div>
+            {isFullscreen ? (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen((open) => !open)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
+                title={sidebarOpen ? "Hide chat sidebar" : "Show chat sidebar"}
+                aria-label={sidebarOpen ? "Hide chat sidebar" : "Show chat sidebar"}
+              >
+                {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={clearCurrentChat}
@@ -781,28 +793,24 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         ) : null}
 
         <div className="border-t border-slate-800 bg-slate-950/90 p-4">
-          <div className="flex items-center gap-2">
-            <input
+          <ChatInput
+            value={inputMessage}
+            onChange={(event) => setInputMessage(event.target.value)}
+            onSubmit={() => void sendMessage()}
+            loading={isLoading}
+            className="border-slate-700 bg-slate-900/70 focus-within:border-cyan-500/40 focus-within:ring-cyan-500/20"
+          >
+            <ChatInputTextArea
               ref={inputRef}
-              value={inputMessage}
-              onChange={(event) => setInputMessage(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault()
-                  void sendMessage()
-                }
-              }}
               placeholder="Ask about budgeting, savings, debt, or spending..."
-              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
+              disabled={!hydrated}
+              className="bg-transparent text-slate-100 placeholder:text-slate-500"
             />
-            <button
-              onClick={() => void sendMessage()}
-              disabled={isLoading || !inputMessage.trim() || !hydrated}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-500 text-slate-950 disabled:opacity-40"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
+            <ChatInputSubmit
+              disabled={!hydrated || !inputMessage.trim()}
+              className="border-cyan-500/30 bg-gradient-to-br from-cyan-400 to-cyan-500 text-slate-950 hover:from-cyan-300 hover:to-cyan-400"
+            />
+          </ChatInput>
         </div>
       </div>
     </div>
