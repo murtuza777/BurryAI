@@ -7,6 +7,12 @@ type ResolvedMode = "local" | "remote" | "hybrid"
 type OpportunityWorkMode = "local" | "remote" | "hybrid" | "unknown"
 type OpportunityType = "internship" | "part-time" | "freelance" | "job" | "gig" | "unknown"
 type ListingQuality = "high" | "medium" | "community"
+type OpportunitySourceBucket = "hidden" | "direct" | "standard" | "popular"
+
+type QueryPlan = {
+  query: string
+  bucket: Exclude<OpportunitySourceBucket, "standard">
+}
 
 type SourceClassification = {
   sourceSite: string
@@ -31,6 +37,7 @@ export type OpportunityResult = {
   url: string
   source: AgentWebResult["source"]
   source_site: string
+  source_bucket: OpportunitySourceBucket
   listing_quality: ListingQuality
   snippet: string
   location: string
@@ -111,8 +118,14 @@ const PRIORITY_DISCOVERY_SOURCES = new Set([
   "Y Combinator",
   "Internshala",
   "Upwork",
+  "Contra",
+  "Himalayas",
+  "We Work Remotely",
+  "Remote OK",
   "Reddit",
-  "X"
+  "X",
+  "GitHub",
+  "Hacker News"
 ])
 
 const POPULAR_BOARDS = new Set(["LinkedIn", "Indeed"])
@@ -219,8 +232,14 @@ function prettifySourceSite(hostname: string): string {
   if (hostname.includes("ashbyhq.com")) return "Ashby"
   if (hostname.includes("wellfound.com")) return "Wellfound"
   if (hostname.includes("upwork.com")) return "Upwork"
+  if (hostname.includes("contra.com")) return "Contra"
+  if (hostname.includes("himalayas.app")) return "Himalayas"
+  if (hostname.includes("weworkremotely.com")) return "We Work Remotely"
+  if (hostname.includes("remoteok.com")) return "Remote OK"
   if (hostname.includes("reddit.com")) return "Reddit"
   if (hostname.includes("x.com") || hostname.includes("twitter.com")) return "X"
+  if (hostname.includes("github.com")) return "GitHub"
+  if (hostname.includes("news.ycombinator.com")) return "Hacker News"
   if (hostname.includes("internshala.com")) return "Internshala"
   if (hostname.includes("ycombinator.com")) return "Y Combinator"
   if (hostname.endsWith(".edu")) return "Campus"
@@ -281,6 +300,18 @@ function classifySource(params: {
   if (hostname.includes("upwork.com") && pathname.includes("/freelance-jobs/")) {
     return { sourceSite, listingQuality: "high" }
   }
+  if (hostname.includes("contra.com") && (pathname.includes("/opportunities/") || pathname.includes("/jobs/"))) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("himalayas.app") && pathname.includes("/jobs/")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("weworkremotely.com") && pathname.includes("/remote-jobs/")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("remoteok.com") && pathname.length > 1) {
+    return { sourceSite, listingQuality: "high" }
+  }
   if (hostname.includes("ycombinator.com") && pathname.includes("/jobs/")) {
     return { sourceSite, listingQuality: "high" }
   }
@@ -294,6 +325,19 @@ function classifySource(params: {
     (hostname.includes("x.com") || hostname.includes("twitter.com")) &&
     pathname.includes("/status/") &&
     LISTING_TERMS.test(params.text)
+  ) {
+    return { sourceSite, listingQuality: "community" }
+  }
+  if (
+    hostname.includes("github.com") &&
+    (pathname.includes("/issues/") || pathname.includes("/discussions/")) &&
+    LISTING_TERMS.test(params.text)
+  ) {
+    return { sourceSite, listingQuality: "community" }
+  }
+  if (
+    hostname.includes("news.ycombinator.com") &&
+    (params.text.includes("who is hiring") || LISTING_TERMS.test(params.text))
   ) {
     return { sourceSite, listingQuality: "community" }
   }
@@ -311,6 +355,13 @@ function classifySource(params: {
   }
 
   return { sourceSite, listingQuality: null }
+}
+
+function sourceBucket(sourceSite: string): OpportunitySourceBucket {
+  if (POPULAR_BOARDS.has(sourceSite)) return "popular"
+  if (PRIORITY_DIRECT_SOURCES.has(sourceSite)) return "direct"
+  if (PRIORITY_DISCOVERY_SOURCES.has(sourceSite)) return "hidden"
+  return "standard"
 }
 
 function cleanListingTitle(title: string, sourceSite: string): string {
@@ -356,7 +407,13 @@ function extractLocationLabel(params: {
   return "Not specified"
 }
 
-function buildQueries(params: {
+function pushQuery(plans: QueryPlan[], query: string, bucket: QueryPlan["bucket"]): void {
+  const value = query.trim()
+  if (!value) return
+  plans.push({ query: value, bucket })
+}
+
+function buildQueryPlans(params: {
   query?: string
   profession: string
   skills: string[]
@@ -371,13 +428,14 @@ function buildQueries(params: {
   includeFreelance: boolean
   remoteRegions: string[]
   radiusKm: number
-}): string[] {
+}): QueryPlan[] {
   const role = params.profession.trim() || params.skills[0] || "student"
   const skillHint = params.skills.slice(0, 3).join(" ")
   const communityTalent = params.otherTalents[0] || params.skills[0] || role
   const localHint = [params.city, params.state_region, params.country].filter(Boolean).join(" ").trim()
   const locationHint = localHint || params.university.trim() || "student campus"
   const remoteHint = params.remoteRegions.length > 0 ? params.remoteRegions.slice(0, 2).join(" ") : "worldwide"
+  const nearMeHint = params.radiusKm <= 25 ? "near me" : `within ${params.radiusKm} km`
 
   const typeHints = [
     params.includeInternships ? "internship" : "",
@@ -387,46 +445,117 @@ function buildQueries(params: {
     .filter(Boolean)
     .join(" ")
 
-  const queries: string[] = []
+  const plans: QueryPlan[] = []
   if (params.query?.trim()) {
-    queries.push(
-      `${params.query.trim()} site:jobs.lever.co OR site:boards.greenhouse.io OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com`
+    pushQuery(
+      plans,
+      `${params.query.trim()} site:jobs.lever.co OR site:boards.greenhouse.io OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com`,
+      "direct"
     )
-    queries.push(`${params.query.trim()} site:wellfound.com/jobs OR site:ycombinator.com/jobs`)
-    queries.push(`${params.query.trim()} hiring site:reddit.com/r/forhire OR site:reddit.com/r/jobs`)
-    queries.push(`${params.query.trim()} hiring site:x.com OR site:twitter.com`)
-    queries.push(`${params.query.trim()} site:linkedin.com/jobs/view`)
-    queries.push(`${params.query.trim()} site:indeed.com/viewjob`)
+    pushQuery(
+      plans,
+      `${params.query.trim()} site:wellfound.com/jobs OR site:ycombinator.com/jobs OR site:himalayas.app/jobs`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${params.query.trim()} site:weworkremotely.com/remote-jobs OR site:remoteok.com OR site:contra.com/opportunities`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${params.query.trim()} hiring site:reddit.com/r/forhire OR site:reddit.com/r/jobs OR site:news.ycombinator.com`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${params.query.trim()} hiring site:x.com OR site:twitter.com OR site:github.com`,
+      "hidden"
+    )
+    pushQuery(plans, `${params.query.trim()} site:linkedin.com/jobs/view`, "popular")
+    pushQuery(plans, `${params.query.trim()} site:indeed.com/viewjob`, "popular")
   }
 
   if (params.mode !== "remote") {
-    queries.push(`${role} ${locationHint} jobs site:jobs.lever.co OR site:boards.greenhouse.io`)
-    queries.push(`${role} ${skillHint} ${typeHints} ${locationHint} site:myworkdayjobs.com OR site:jobs.ashbyhq.com`)
-    queries.push(`${role} ${skillHint} ${typeHints} ${locationHint} site:wellfound.com/jobs`)
+    pushQuery(plans, `${role} ${locationHint} jobs site:jobs.lever.co OR site:boards.greenhouse.io`, "direct")
+    pushQuery(
+      plans,
+      `${role} ${skillHint} ${typeHints} ${locationHint} site:myworkdayjobs.com OR site:jobs.ashbyhq.com OR site:smartrecruiters.com`,
+      "direct"
+    )
+    pushQuery(
+      plans,
+      `${role} ${skillHint} ${typeHints} ${locationHint} site:wellfound.com/jobs OR site:himalayas.app/jobs`,
+      "hidden"
+    )
     if (params.includeInternships) {
-      queries.push(`${role} internship ${locationHint} site:internshala.com OR site:ycombinator.com/jobs`)
+      pushQuery(
+        plans,
+        `${role} internship ${locationHint} site:internshala.com OR site:ycombinator.com/jobs`,
+        "hidden"
+      )
     }
     if (params.university.trim()) {
-      queries.push(`"${params.university.trim()}" student jobs internship careers`)
+      pushQuery(plans, `"${params.university.trim()}" student jobs internship careers`, "direct")
     }
-    queries.push(`${role} ${skillHint} ${typeHints} ${locationHint} site:linkedin.com/jobs/view`)
-    queries.push(`${role} ${typeHints} ${locationHint} site:indeed.com/viewjob`)
+    pushQuery(
+      plans,
+      `${role} ${skillHint} ${typeHints} ${locationHint} hiring site:reddit.com/r/jobs OR site:github.com OR site:news.ycombinator.com`,
+      "hidden"
+    )
+    pushQuery(plans, `${role} ${skillHint} ${locationHint} ${nearMeHint} careers`, "direct")
+    pushQuery(plans, `${role} ${skillHint} ${typeHints} ${locationHint} site:linkedin.com/jobs/view`, "popular")
+    pushQuery(plans, `${role} ${typeHints} ${locationHint} site:indeed.com/viewjob`, "popular")
   }
 
   if (params.mode !== "local") {
-    queries.push(`${role} remote ${skillHint} site:jobs.lever.co OR site:boards.greenhouse.io`)
-    queries.push(`${role} remote ${skillHint} site:myworkdayjobs.com OR site:smartrecruiters.com`)
-    queries.push(`${role} remote ${skillHint} ${remoteHint} site:wellfound.com/jobs OR site:ycombinator.com/jobs`)
+    pushQuery(plans, `${role} remote ${skillHint} site:jobs.lever.co OR site:boards.greenhouse.io`, "direct")
+    pushQuery(plans, `${role} remote ${skillHint} site:myworkdayjobs.com OR site:smartrecruiters.com`, "direct")
+    pushQuery(
+      plans,
+      `${role} remote ${skillHint} ${remoteHint} site:wellfound.com/jobs OR site:ycombinator.com/jobs OR site:himalayas.app/jobs`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${role} remote ${skillHint} site:weworkremotely.com/remote-jobs OR site:remoteok.com`,
+      "hidden"
+    )
     if (params.includeFreelance) {
-      queries.push(`${communityTalent} remote freelance site:upwork.com/freelance-jobs`)
+      pushQuery(
+        plans,
+        `${communityTalent} remote freelance site:upwork.com/freelance-jobs OR site:contra.com/opportunities`,
+        "hidden"
+      )
     }
-    queries.push(`${role} hiring remote site:reddit.com/r/forhire OR site:reddit.com/r/jobs`)
-    queries.push(`${role} hiring remote site:x.com OR site:twitter.com`)
-    queries.push(`${role} remote ${skillHint} site:linkedin.com/jobs/view`)
-    queries.push(`${role} remote ${skillHint} site:indeed.com/viewjob`)
+    pushQuery(
+      plans,
+      `${role} hiring remote site:reddit.com/r/forhire OR site:reddit.com/r/jobs OR site:news.ycombinator.com`,
+      "hidden"
+    )
+    pushQuery(plans, `${role} hiring remote site:x.com OR site:twitter.com OR site:github.com`, "hidden")
+    pushQuery(plans, `${role} remote ${skillHint} site:linkedin.com/jobs/view`, "popular")
+    pushQuery(plans, `${role} remote ${skillHint} site:indeed.com/viewjob`, "popular")
   }
 
-  return uniqueStrings(queries).slice(0, 10)
+  const hiddenAndDirect = uniqueStrings(
+    plans.filter((plan) => plan.bucket !== "popular").map((plan) => `${plan.bucket}::${plan.query}`)
+  )
+    .slice(0, 14)
+    .map((value) => {
+      const [bucket, ...parts] = value.split("::")
+      return { bucket: bucket as QueryPlan["bucket"], query: parts.join("::") }
+    })
+  const popular = uniqueStrings(
+    plans.filter((plan) => plan.bucket === "popular").map((plan) => `${plan.bucket}::${plan.query}`)
+  )
+    .slice(0, 4)
+    .map((value) => {
+      const [bucket, ...parts] = value.split("::")
+      return { bucket: bucket as QueryPlan["bucket"], query: parts.join("::") }
+    })
+
+  return [...hiddenAndDirect, ...popular]
 }
 
 function sourcePriorityAdjustment(sourceSite: string, listingQuality: ListingQuality): number {
@@ -443,6 +572,27 @@ function freshnessAdjustment(text: string): number {
   if (FRESHNESS_TERMS.test(text)) score += 8
   if (/\b2026\b/.test(text)) score += 2
   return score
+}
+
+function bucketSortValue(bucket: OpportunitySourceBucket): number {
+  if (bucket === "hidden") return 0
+  if (bucket === "direct") return 1
+  if (bucket === "standard") return 2
+  return 3
+}
+
+function canonicalListingKey(item: Pick<EnrichedOpportunity, "title" | "company" | "location" | "opportunity_type">): string {
+  const normalize = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+  const title = normalize(item.title)
+  const company = normalize(item.company)
+  const location = normalize(item.location)
+  return [title, company || location, item.opportunity_type].join("|")
+}
+
+function compareOpportunities(a: EnrichedOpportunity, b: EnrichedOpportunity): number {
+  const bucketDiff = bucketSortValue(a.source_bucket) - bucketSortValue(b.source_bucket)
+  if (bucketDiff !== 0) return bucketDiff
+  return b.score - a.score
 }
 
 function buildOpportunityFromWeb(params: {
@@ -463,6 +613,7 @@ function buildOpportunityFromWeb(params: {
     text,
     university: params.university
   })
+  const sourceBucketValue = sourceBucket(sourceMeta.sourceSite)
 
   if (!sourceMeta.listingQuality) {
     return null
@@ -491,6 +642,9 @@ function buildOpportunityFromWeb(params: {
   if (sourceMeta.listingQuality === "community") score += 6
   score += sourcePriorityAdjustment(sourceMeta.sourceSite, sourceMeta.listingQuality)
   score += freshnessAdjustment(text)
+  if (sourceBucketValue === "hidden") score += 10
+  if (sourceBucketValue === "direct") score += 6
+  if (sourceBucketValue === "popular") score -= 16
   if (params.preferredMode === "local" && nearby) score += 6
   if (params.preferredMode === "remote" && remoteFriendly) score += 6
   if (params.preferredMode === "hybrid" && (nearby || remoteFriendly)) score += 4
@@ -516,6 +670,9 @@ function buildOpportunityFromWeb(params: {
   if (PRIORITY_DIRECT_SOURCES.has(sourceMeta.sourceSite) || PRIORITY_DISCOVERY_SOURCES.has(sourceMeta.sourceSite)) {
     matchReasons.push("Less saturated than mainstream job boards")
   }
+  if (sourceBucketValue === "popular") {
+    matchReasons.push("Popular board fallback")
+  }
   if (nearby) {
     matchReasons.push(`Near ${params.locationLabel}`)
   }
@@ -533,6 +690,7 @@ function buildOpportunityFromWeb(params: {
     url: source.url,
     source: source.source,
     source_site: sourceMeta.sourceSite,
+    source_bucket: sourceBucketValue,
     listing_quality: sourceMeta.listingQuality,
     snippet: source.snippet,
     location: extractLocationLabel({
@@ -586,6 +744,24 @@ function uniqueByUrl(items: EnrichedOpportunity[]): EnrichedOpportunity[] {
   return output
 }
 
+function uniqueByListingSignature(items: EnrichedOpportunity[]): EnrichedOpportunity[] {
+  const seen = new Set<string>()
+  const output: EnrichedOpportunity[] = []
+
+  for (const item of items) {
+    const key = canonicalListingKey(item)
+    if (key.replace(/\|/g, "").length < 10) {
+      output.push(item)
+      continue
+    }
+    if (seen.has(key)) continue
+    seen.add(key)
+    output.push(item)
+  }
+
+  return output
+}
+
 export async function discoverOpportunities(params: {
   db: D1Database
   userId: string
@@ -598,7 +774,7 @@ export async function discoverOpportunities(params: {
   const includeFreelance = params.input.include_freelance ?? true
   const remoteRegions = compactTokenList(params.input.remote_regions ?? profile.remote_regions)
   const radiusKm = Math.max(1, Math.min(params.input.radius_km ?? profile.opportunity_radius_km, 500))
-  const maxResults = Math.max(6, Math.min(params.input.max_results ?? 18, 30))
+  const maxResults = Math.max(6, Math.min(params.input.max_results ?? 30, 48))
   const requestedMode: ResolvedMode =
     params.input.mode === "auto" || !params.input.mode
       ? profile.preferred_work_mode
@@ -620,7 +796,7 @@ export async function discoverOpportunities(params: {
     university: profile.university
   })
 
-  const queries = buildQueries({
+  const queryPlans = buildQueryPlans({
     query: params.input.query,
     profession: profile.profession,
     skills,
@@ -636,7 +812,8 @@ export async function discoverOpportunities(params: {
     remoteRegions,
     radiusKm
   })
-  const perQueryTopK = Math.max(4, Math.min(6, Math.ceil(maxResults / Math.max(1, queries.length)) + 2))
+  const queries = queryPlans.map((plan) => plan.query)
+  const perQueryTopK = Math.max(5, Math.min(8, Math.ceil(maxResults / Math.max(1, Math.min(queries.length, 8))) + 2))
 
   const batches = await Promise.all(
     queries.map((query) =>
@@ -649,38 +826,39 @@ export async function discoverOpportunities(params: {
     )
   )
 
-  const normalized = uniqueByUrl(
-    batches
-      .flat()
-      .map((result) =>
-        buildOpportunityFromWeb({
-          result,
-          profileTokens,
-          skills,
-          profession: profile.profession,
-          preferredMode: profile.preferred_work_mode,
-          requestedMode: resolvedMode,
-          remoteRegions,
-          locationLabel,
-          university: profile.university
-        })
-      )
-      .filter((item): item is EnrichedOpportunity => item !== null)
-      .filter((item) =>
-        passesTypeFilter({
-          opportunityType: item.opportunity_type,
-          includeInternships,
-          includePartTime,
-          includeFreelance
-        })
-      )
-      .filter((item) => passesModeFilter(item, resolvedMode))
-      .filter((item) =>
-        remoteRegions.length > 0 && resolvedMode !== "local" ? item.remote_region_allowed : true
-      )
-      .sort((a, b) => b.score - a.score)
-      .slice(0, maxResults)
-  )
+  const normalized = uniqueByListingSignature(
+    uniqueByUrl(
+      batches
+        .flat()
+        .map((result) =>
+          buildOpportunityFromWeb({
+            result,
+            profileTokens,
+            skills,
+            profession: profile.profession,
+            preferredMode: profile.preferred_work_mode,
+            requestedMode: resolvedMode,
+            remoteRegions,
+            locationLabel,
+            university: profile.university
+          })
+        )
+        .filter((item): item is EnrichedOpportunity => item !== null)
+        .filter((item) =>
+          passesTypeFilter({
+            opportunityType: item.opportunity_type,
+            includeInternships,
+            includePartTime,
+            includeFreelance
+          })
+        )
+        .filter((item) => passesModeFilter(item, resolvedMode))
+        .filter((item) =>
+          remoteRegions.length > 0 && resolvedMode !== "local" ? item.remote_region_allowed : true
+        )
+        .sort(compareOpportunities)
+    )
+  ).slice(0, maxResults)
 
   return {
     opportunities: normalized.map(({ text: _, remote_region_allowed: __, ...item }) => item),
@@ -708,8 +886,10 @@ export async function discoverOpportunities(params: {
 }
 
 export const __private__ = {
+  buildQueryPlans,
   classifySource,
   cleanListingTitle,
   extractCompany,
+  sourceBucket,
   sourcePriorityAdjustment
 }
