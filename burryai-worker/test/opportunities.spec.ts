@@ -67,6 +67,17 @@ describe("Opportunities route", () => {
         university: ""
       }).listingQuality
     ).toBeNull()
+
+    expect(
+      opportunitiesPrivate.classifySource({
+        url: "https://news.ycombinator.com/item?id=123",
+        text: "who is hiring remote frontend engineer",
+        university: ""
+      })
+    ).toEqual({
+      sourceSite: "Hacker News",
+      listingQuality: "community"
+    })
   })
 
   it("prioritizes niche and direct sources above mainstream boards", () => {
@@ -77,6 +88,38 @@ describe("Opportunities route", () => {
     expect(opportunitiesPrivate.sourcePriorityAdjustment("Reddit", "community")).toBeGreaterThan(
       opportunitiesPrivate.sourcePriorityAdjustment("Indeed", "high")
     )
+
+    expect(opportunitiesPrivate.sourceBucket("LinkedIn")).toBe("popular")
+    expect(opportunitiesPrivate.sourceBucket("GitHub")).toBe("hidden")
+    expect(opportunitiesPrivate.sourceBucket("Greenhouse")).toBe("direct")
+  })
+
+  it("builds hidden-source queries before mainstream fallback boards", () => {
+    const plans = opportunitiesPrivate.buildQueryPlans({
+      query: "remote product design internship",
+      profession: "Product Designer",
+      skills: ["figma", "ux writing", "prototype"],
+      otherTalents: ["content"],
+      university: "Boston University",
+      city: "Boston",
+      state_region: "Massachusetts",
+      country: "United States",
+      mode: "remote",
+      includeInternships: true,
+      includePartTime: true,
+      includeFreelance: true,
+      remoteRegions: ["United States", "Canada"],
+      radiusKm: 25
+    })
+
+    expect(plans.length).toBeGreaterThan(6)
+    const firstPopularIndex = plans.findIndex((plan: { bucket: string }) => plan.bucket === "popular")
+    expect(firstPopularIndex).toBeGreaterThan(0)
+    expect(plans.slice(0, firstPopularIndex).every((plan: { bucket: string }) => plan.bucket !== "popular")).toBe(true)
+    expect(plans.some((plan: { query: string }) => plan.query.includes("news.ycombinator.com"))).toBe(true)
+    expect(plans.some((plan: { query: string }) => plan.query.includes("github.com"))).toBe(true)
+    expect(plans.some((plan: { query: string }) => plan.query.includes("himalayas.app/jobs"))).toBe(true)
+    expect(plans.slice(firstPopularIndex).every((plan: { bucket: string }) => plan.bucket === "popular")).toBe(true)
   })
 
   beforeAll(async () => {
