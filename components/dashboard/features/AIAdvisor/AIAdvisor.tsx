@@ -662,7 +662,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
           </div>
         ) : null}
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+        <div className="hide-scrollbar flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
           {activeMessages.map((message) => (
             <div
               key={message.id}
