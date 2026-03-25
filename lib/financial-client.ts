@@ -332,6 +332,7 @@ export interface OpportunitySearchResponse {
     url: string
     source: "tavily" | "serper" | "none"
     source_site: string
+    source_bucket: "hidden" | "direct" | "standard" | "popular"
     listing_quality: "high" | "medium" | "community"
     snippet: string
     location: string
