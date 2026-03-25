@@ -103,13 +103,13 @@ function ToggleButton(props: {
       type="button"
       onClick={props.onClick}
       className={cn(
-        'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition',
+        'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition',
         props.active
           ? 'border-cyan-300/80 bg-cyan-300 text-slate-950 shadow-[0_10px_24px_rgba(34,211,238,0.16)]'
           : 'border-slate-700 bg-slate-950/70 text-slate-300 hover:border-cyan-400/60 hover:text-slate-100'
       )}
     >
-      {Icon ? <Icon className="h-4 w-4" /> : null}
+      {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
       {props.label}
     </button>
   )
@@ -122,6 +122,7 @@ export default function DashboardOpportunitiesPage() {
   const [loading, setLoading] = useState(true)
   const [searching, setSearching] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [showIntro, setShowIntro] = useState(false)
   const [error, setError] = useState('')
   const [searchResult, setSearchResult] = useState<OpportunitySearchResponse | null>(null)
 
@@ -273,171 +274,132 @@ export default function DashboardOpportunitiesPage() {
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-[2rem] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(2,6,23,0.76))] p-6 shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-cyan-200">
-              <Sparkles className="h-3.5 w-3.5" />
-              Opportunity Engine
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-50 md:text-4xl">
-              Find real listings, not random search clutter
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-              BurryAI now searches deeper across company career pages, startup boards, campus pages, Reddit, X, GitHub, Hacker News, and niche remote boards before it falls back to LinkedIn or Indeed.
-            </p>
-          </div>
-
-          {hasSavedOpportunityProfile ? (
-            <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-              Opportunity profile is saved in Profile details.
-            </div>
-          ) : null}
-        </div>
-
-        {hasSavedOpportunityProfile ? (
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-            <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Saved Opportunity Profile</p>
-                  <h2 className="mt-1 text-xl font-semibold text-slate-100">{profileDraft.profession}</h2>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/dashboard/profile')}
-                  className="border-slate-700 bg-slate-900/70 text-slate-100 hover:bg-slate-800"
-                >
-                  <PencilLine className="mr-2 h-4 w-4" />
-                  Profile details
-                </Button>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {fromCsv(profileDraft.skillsCsv).slice(0, 6).map((skill) => (
-                  <Badge key={skill} className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
-                    {skill}
-                  </Badge>
-                ))}
-                {fromCsv(profileDraft.talentsCsv).slice(0, 3).map((talent) => (
-                  <Badge key={talent} className="border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-100">
-                    {talent}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-4">
-                <div className="flex items-center gap-2 text-slate-200">
-                  <MapPin className="h-4 w-4 text-cyan-300" />
-                  <span className="text-sm font-medium">Location</span>
-                </div>
-                <p className="mt-2 text-sm text-slate-300">
-                  {[profileDraft.city, profileDraft.stateRegion, profileDraft.country].filter(Boolean).join(', ') || 'Remote-first'}
-                </p>
-              </div>
-              <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-4">
-                <div className="flex items-center gap-2 text-slate-200">
-                  <Briefcase className="h-4 w-4 text-cyan-300" />
-                  <span className="text-sm font-medium">Work Style</span>
-                </div>
-                <p className="mt-2 text-sm capitalize text-slate-300">{profileDraft.preferredMode}</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-6 rounded-[2rem] border border-slate-800/80 bg-slate-950/55 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-100">Add opportunity details in Profile</h2>
-                <p className="mt-1 text-sm text-slate-300">
-                  This page now stays focused on discovery. Add your role, skills, location, work mode, and other talents in Profile details.
-                </p>
-              </div>
-              <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">Profile required for quality matches</Badge>
-            </div>
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Button
-                type="button"
-                onClick={() => router.push('/dashboard/profile')}
-                disabled={isGuest}
-                className="rounded-full border border-cyan-300/60 bg-cyan-300 px-5 py-2.5 font-semibold text-slate-950 hover:bg-cyan-200"
-              >
-                Open profile details
-              </Button>
-              <p className="text-xs text-slate-400">
-                Opportunity research will use those saved details for personalized matches.
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/60 p-6 shadow-[0_24px_70px_rgba(2,6,23,0.4)]">
+      <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(2,6,23,0.76))] px-4 py-3 shadow-[0_14px_44px_rgba(2,6,23,0.38)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Search Filters</p>
-            <h2 className="mt-1 text-2xl font-semibold text-slate-100">Search hidden opportunities faster</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-[240px] flex flex-wrap items-center gap-2">
             {hasSavedOpportunityProfile ? (
-              <div className="flex flex-wrap gap-2">
-                {remoteRegions.slice(0, 3).map((region) => (
-                  <Badge key={region} className="border-slate-700 bg-slate-900 text-slate-200">
-                    {region}
+              <>
+                <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">
+                  {profileDraft.profession || 'Your role'}
+                </Badge>
+                {[profileDraft.city, profileDraft.stateRegion, profileDraft.country].filter(Boolean).join(', ') ? (
+                  <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">
+                    {[profileDraft.city, profileDraft.stateRegion, profileDraft.country].filter(Boolean).join(', ')}
                   </Badge>
-                ))}
-              </div>
-            ) : null}
+                ) : (
+                  <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">Remote-first</Badge>
+                )}
+                <Badge className="border-slate-700 bg-slate-900/70 text-slate-200 capitalize">
+                  {profileDraft.preferredMode}
+                </Badge>
+              </>
+            ) : (
+              <p className="text-sm text-slate-300">
+                Add your role + skills in <span className="text-slate-100">Profile details</span>.
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowFilters((prev) => !prev)}
-              className="h-9 rounded-full border-slate-700 bg-slate-900/70 px-4 text-slate-100 hover:bg-slate-800"
+              onClick={() => setShowIntro((prev) => !prev)}
+              className="h-8 rounded-full border-slate-700 bg-slate-900/70 px-3 text-xs text-slate-100 hover:bg-slate-800"
             >
-              <Filter className="mr-2 h-4 w-4" />
-              Filters
-              {showFilters ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+              {showIntro ? 'Hide' : 'How it works'}
+              {showIntro ? <ChevronUp className="ml-1.5 h-3.5 w-3.5" /> : <ChevronDown className="ml-1.5 h-3.5 w-3.5" />}
             </Button>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-3xl border border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(2,6,23,0.92))] p-4">
-          <div className="flex flex-col gap-3 lg:flex-row">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <Input
-                id="query"
-                value={filters.query}
-                onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
-                className="h-10 rounded-full border-slate-700 bg-slate-950/80 pl-11 pr-4 text-sm text-slate-100"
-                placeholder="Search role, skill, internship, company, or hiring phrase"
-              />
-            </div>
             <Button
               type="button"
-              onClick={() => void runSearch()}
-              disabled={searching || isGuest || !hasSavedOpportunityProfile}
-              className="h-10 rounded-full border border-cyan-300/60 bg-cyan-300 px-5 text-sm font-semibold text-slate-950 hover:bg-cyan-200"
+              onClick={() => router.push('/dashboard/profile')}
+              className="h-8 rounded-full border border-cyan-300/60 bg-cyan-300 px-3 text-xs font-semibold text-slate-950 hover:bg-cyan-200"
             >
-              {searching ? 'Searching...' : 'Search listings'}
+              <PencilLine className="mr-1.5 h-3.5 w-3.5" />
+              Profile details
             </Button>
           </div>
-          {!hasSavedOpportunityProfile ? (
-            <p className="mt-3 text-xs text-slate-400">
-              Add your opportunity details in Profile before searching so results stay personalized.
-            </p>
-          ) : null}
         </div>
 
+        {showIntro ? (
+          <div className="mt-3 rounded-2xl border border-slate-800/80 bg-slate-950/55 px-4 py-3 text-sm text-slate-300">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-100">How it works</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-slate-300">
+                <li>
+                  We prioritize <span className="text-slate-100">hidden + direct</span> sources (career pages, communities, niche boards),
+                  then place broad boards lower.
+                </li>
+                <li>
+                  Your saved Profile details power matching: role + skills + location + work mode.
+                </li>
+                <li>
+                  Status:{" "}
+                  <span className={hasSavedOpportunityProfile ? "text-emerald-200" : "text-amber-200"}>
+                    {hasSavedOpportunityProfile ? "Profile saved" : "Profile needed"}
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        ) : null}
+
+      </section>
+
+      <section className="rounded-[1.25rem] border border-cyan-500/20 bg-slate-950/60 px-3 py-3 shadow-[0_12px_34px_rgba(2,6,23,0.3)]">
+        <div className="flex flex-col gap-2.5 lg:flex-row">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              id="query"
+              value={filters.query}
+              onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
+              className="h-9 rounded-full border-slate-700 bg-slate-950/80 pl-11 pr-4 text-sm text-slate-100"
+              placeholder="Search role, skill, internship, company, or hiring phrase"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={() => void runSearch()}
+            disabled={searching || isGuest || !hasSavedOpportunityProfile}
+            className="h-9 rounded-full border border-cyan-300/60 bg-cyan-300 px-4 text-xs font-semibold text-slate-950 hover:bg-cyan-200"
+          >
+            {searching ? 'Searching...' : 'Search listings'}
+          </Button>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+          {hasSavedOpportunityProfile ? (
+            <div className="flex flex-wrap gap-2">
+              {remoteRegions.slice(0, 3).map((region) => (
+                <Badge key={region} className="border-slate-700 bg-slate-900 text-slate-200">
+                  {region}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowFilters((prev) => !prev)}
+            className="h-8 rounded-full border-slate-700 bg-slate-900/70 px-3 text-xs text-slate-100 hover:bg-slate-800"
+          >
+            <Filter className="mr-1.5 h-3.5 w-3.5" />
+            Filters
+            {showFilters ? <ChevronUp className="ml-1.5 h-3.5 w-3.5" /> : <ChevronDown className="ml-1.5 h-3.5 w-3.5" />}
+          </Button>
+        </div>
+        {!hasSavedOpportunityProfile ? (
+          <p className="mt-2 text-xs text-slate-400">
+            Add your opportunity details in Profile before searching so results stay personalized.
+          </p>
+        ) : null}
+
         {showFilters ? (
-          <div className="mt-5 grid gap-4 rounded-3xl border border-slate-800/80 bg-slate-950/50 p-4 xl:grid-cols-[1.4fr_1fr]">
-            <div className="space-y-4">
+          <div className="mt-3 grid gap-3 rounded-xl border border-slate-800/80 bg-slate-950/50 p-2.5 xl:grid-cols-[1.4fr_1fr]">
+            <div className="space-y-3">
               <div>
-                <div className="mb-2 flex items-center gap-2 text-sm text-slate-300">
-                  <Filter className="h-4 w-4 text-cyan-300" />
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-300">
+                  <Filter className="h-3.5 w-3.5 text-cyan-300" />
                   Search mode
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -454,8 +416,8 @@ export default function DashboardOpportunitiesPage() {
               </div>
 
               <div>
-                <div className="mb-2 flex items-center gap-2 text-sm text-slate-300">
-                  <GraduationCap className="h-4 w-4 text-cyan-300" />
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-300">
+                  <GraduationCap className="h-3.5 w-3.5 text-cyan-300" />
                   Opportunity type
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -484,10 +446,10 @@ export default function DashboardOpportunitiesPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Search radius</p>
-                <div className="mt-3 flex flex-wrap gap-2">
+            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/55 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Search radius</p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   {RADIUS_OPTIONS.map((radius) => (
                     <ToggleButton
                       key={radius}
@@ -498,9 +460,9 @@ export default function DashboardOpportunitiesPage() {
                   ))}
                 </div>
               </div>
-              <div className="rounded-3xl border border-slate-800/80 bg-slate-950/55 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Result volume</p>
-                <div className="mt-3 flex flex-wrap gap-2">
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/55 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Result volume</p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   {RESULT_OPTIONS.map((count) => (
                     <ToggleButton
                       key={count}
