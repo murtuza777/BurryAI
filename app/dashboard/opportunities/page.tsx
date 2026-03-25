@@ -33,6 +33,7 @@ import {
 import { cn } from '@/lib/utils'
 
 type ModeFilter = 'auto' | WorkMode
+type SourceBucket = OpportunitySearchResponse['opportunities'][number]['source_bucket']
 
 const MODE_OPTIONS: Array<{ value: ModeFilter; label: string; icon: typeof MapPin }> = [
   { value: 'auto', label: 'Smart Match', icon: Sparkles },
@@ -42,7 +43,26 @@ const MODE_OPTIONS: Array<{ value: ModeFilter; label: string; icon: typeof MapPi
 ]
 
 const RADIUS_OPTIONS = [10, 25, 50, 100]
-const RESULT_OPTIONS = [12, 18, 24]
+const RESULT_OPTIONS = [18, 30, 42]
+const SOURCE_BUCKET_ORDER: SourceBucket[] = ['hidden', 'direct', 'standard', 'popular']
+const SOURCE_BUCKET_LABELS: Record<SourceBucket, { title: string; description: string }> = {
+  hidden: {
+    title: 'Hidden and niche matches',
+    description: 'Less-seen opportunities from communities, startup boards, niche boards, and social hiring posts.'
+  },
+  direct: {
+    title: 'Direct career pages',
+    description: 'Listings pulled from company career pages and ATS systems before broad job boards.'
+  },
+  standard: {
+    title: 'Additional web matches',
+    description: 'Relevant web listings that still fit, but are not as niche as the top sections.'
+  },
+  popular: {
+    title: 'Popular boards',
+    description: 'LinkedIn and Indeed fallback listings kept lower so hidden matches show first.'
+  }
+}
 
 function toCsv(items: string[]): string {
   return items.join(', ')
@@ -125,7 +145,7 @@ export default function DashboardOpportunitiesPage() {
     includePartTime: true,
     includeFreelance: false,
     radiusKm: 25,
-    maxResults: 18
+    maxResults: 30
   })
 
   useEffect(() => {
@@ -174,7 +194,7 @@ export default function DashboardOpportunitiesPage() {
             include_freelance: false,
             remote_regions: fromCsv(nextDraft.remoteRegionsCsv),
             radius_km: Number(nextDraft.radiusKm || 25),
-            max_results: 18
+            max_results: 30
           })
           setSearchResult(payload)
         } else {
@@ -192,6 +212,14 @@ export default function DashboardOpportunitiesPage() {
   }, [authLoading, isGuest])
 
   const remoteRegions = useMemo(() => fromCsv(profileDraft.remoteRegionsCsv), [profileDraft.remoteRegionsCsv])
+  const groupedResults = useMemo(() => {
+    if (!searchResult) return []
+
+    return SOURCE_BUCKET_ORDER.map((bucket) => ({
+      bucket,
+      items: searchResult.opportunities.filter((item) => item.source_bucket === bucket)
+    })).filter((group) => group.items.length > 0)
+  }, [searchResult])
   const hasSavedOpportunityProfile = useMemo(
     () =>
       isOpportunityProfileConfigured({
@@ -216,7 +244,7 @@ export default function DashboardOpportunitiesPage() {
         include_freelance: filters.includeFreelance,
         remote_regions: remoteRegions,
         radius_km: Number(filters.radiusKm || 25),
-        max_results: Number(filters.maxResults || 18),
+        max_results: Number(filters.maxResults || 30),
         ...overrides
       })
       setSearchResult(payload)
@@ -256,7 +284,7 @@ export default function DashboardOpportunitiesPage() {
               Find real listings, not random search clutter
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-              BurryAI now prioritizes direct listings from job boards, company career pages, campus pages, Reddit hiring communities, and social hiring posts.
+              BurryAI now searches deeper across company career pages, startup boards, campus pages, Reddit, X, GitHub, Hacker News, and niche remote boards before it falls back to LinkedIn or Indeed.
             </p>
           </div>
 
@@ -356,11 +384,11 @@ export default function DashboardOpportunitiesPage() {
           <div className="flex flex-wrap items-center gap-2">
             {hasSavedOpportunityProfile ? (
               <div className="flex flex-wrap gap-2">
-              {remoteRegions.slice(0, 3).map((region) => (
-                <Badge key={region} className="border-slate-700 bg-slate-900 text-slate-200">
-                  {region}
-                </Badge>
-              ))}
+                {remoteRegions.slice(0, 3).map((region) => (
+                  <Badge key={region} className="border-slate-700 bg-slate-900 text-slate-200">
+                    {region}
+                  </Badge>
+                ))}
               </div>
             ) : null}
             <Button
@@ -512,7 +540,7 @@ export default function DashboardOpportunitiesPage() {
             </p>
             <p className="mt-2 text-sm text-slate-400">
               {hasSavedOpportunityProfile
-                ? 'We prioritize company career pages, niche platforms, campus pages, Reddit, social hiring posts, and keep popular boards lower.'
+                ? 'We prioritize company career pages, niche platforms, social hiring posts, and community leads, then keep popular boards lower in the list.'
                 : 'Use Profile details once, then this page stays focused on hidden and useful opportunities.'}
             </p>
           </div>
@@ -524,96 +552,110 @@ export default function DashboardOpportunitiesPage() {
             </p>
           </div>
         ) : (
-          <div className="mt-6 grid gap-4">
-            {searchResult.opportunities.map((item) => (
-              <article
-                key={item.id}
-                className="group relative overflow-hidden rounded-[1.75rem] border border-slate-800/90 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.92))] p-5 transition hover:border-cyan-400/40 hover:shadow-[0_22px_60px_rgba(14,165,233,0.12)]"
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.07),transparent_30%)] opacity-0 transition group-hover:opacity-100" />
-                <div className="relative">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="max-w-3xl">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
-                          {item.source_site}
-                        </Badge>
-                        <Badge className="border-slate-700 bg-slate-900 text-slate-200 capitalize">
-                          {item.listing_quality}
-                        </Badge>
-                        {item.near_user_location ? (
-                          <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-100">
-                            Nearby match
-                          </Badge>
-                        ) : null}
-                        {item.remote_friendly ? (
-                          <Badge className="border-sky-400/30 bg-sky-400/10 text-sky-100">
-                            Remote-friendly
-                          </Badge>
-                        ) : null}
-                      </div>
-
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 inline-flex items-start gap-2 text-xl font-semibold text-slate-50 transition hover:text-cyan-200"
-                      >
-                        <span>{item.title}</span>
-                        <ExternalLink className="mt-1 h-4 w-4 shrink-0" />
-                      </a>
-
-                      <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
-                        {item.company ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-cyan-300" />
-                            {item.company}
-                          </span>
-                        ) : null}
-                        <span className="inline-flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-cyan-300" />
-                          {item.location}
-                        </span>
-                        <span className="inline-flex items-center gap-2">
-                          <Briefcase className="h-4 w-4 text-cyan-300" />
-                          {item.work_mode} / {item.opportunity_type}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Match Score</div>
-                      <div className="mt-1 text-2xl font-semibold text-cyan-200">{item.score}</div>
-                    </div>
+          <div className="mt-6 space-y-6">
+            {groupedResults.map((group) => (
+              <div key={group.bucket} className="space-y-4">
+                <div className="flex flex-wrap items-end justify-between gap-3 rounded-3xl border border-slate-800/70 bg-slate-950/40 px-4 py-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{group.items.length} listings</p>
+                    <h4 className="mt-1 text-lg font-semibold text-slate-100">{SOURCE_BUCKET_LABELS[group.bucket].title}</h4>
                   </div>
-
-                  <p className="mt-4 text-sm leading-6 text-slate-300">
-                    {item.snippet || 'Open the listing for full details.'}
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {item.matched_skills.map((skill) => (
-                      <Badge key={skill} className="border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-100">
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-
-                  <p className="mt-4 text-sm text-slate-400">{item.match_reasons.join(' · ')}</p>
-
-                  <div className="mt-5">
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 text-sm font-medium text-cyan-200 transition hover:text-cyan-100"
-                    >
-                      Open listing
-                      <ArrowRight className="h-4 w-4" />
-                    </a>
-                  </div>
+                  <p className="max-w-2xl text-sm text-slate-400">{SOURCE_BUCKET_LABELS[group.bucket].description}</p>
                 </div>
-              </article>
+
+                <div className="grid gap-4">
+                  {group.items.map((item) => (
+                    <article
+                      key={item.id}
+                      className="group relative overflow-hidden rounded-[1.75rem] border border-slate-800/90 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.92))] p-5 transition hover:border-cyan-400/40 hover:shadow-[0_22px_60px_rgba(14,165,233,0.12)]"
+                    >
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.07),transparent_30%)] opacity-0 transition group-hover:opacity-100" />
+                      <div className="relative">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div className="max-w-3xl">
+                            <div className="flex flex-wrap gap-2">
+                              <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
+                                {item.source_site}
+                              </Badge>
+                              <Badge className="border-slate-700 bg-slate-900 text-slate-200 capitalize">
+                                {item.listing_quality}
+                              </Badge>
+                              {item.near_user_location ? (
+                                <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-100">
+                                  Nearby match
+                                </Badge>
+                              ) : null}
+                              {item.remote_friendly ? (
+                                <Badge className="border-sky-400/30 bg-sky-400/10 text-sky-100">
+                                  Remote-friendly
+                                </Badge>
+                              ) : null}
+                            </div>
+
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex items-start gap-2 text-xl font-semibold text-slate-50 transition hover:text-cyan-200"
+                            >
+                              <span>{item.title}</span>
+                              <ExternalLink className="mt-1 h-4 w-4 shrink-0" />
+                            </a>
+
+                            <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
+                              {item.company ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <Building2 className="h-4 w-4 text-cyan-300" />
+                                  {item.company}
+                                </span>
+                              ) : null}
+                              <span className="inline-flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-cyan-300" />
+                                {item.location}
+                              </span>
+                              <span className="inline-flex items-center gap-2">
+                                <Briefcase className="h-4 w-4 text-cyan-300" />
+                                {item.work_mode} / {item.opportunity_type}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Match Score</div>
+                            <div className="mt-1 text-2xl font-semibold text-cyan-200">{item.score}</div>
+                          </div>
+                        </div>
+
+                        <p className="mt-4 text-sm leading-6 text-slate-300">
+                          {item.snippet || 'Open the listing for full details.'}
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {item.matched_skills.map((skill) => (
+                            <Badge key={skill} className="border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-100">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+
+                        <p className="mt-4 text-sm text-slate-400">{item.match_reasons.join(' | ')}</p>
+
+                        <div className="mt-5">
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 text-sm font-medium text-cyan-200 transition hover:text-cyan-100"
+                          >
+                            Open listing
+                            <ArrowRight className="h-4 w-4" />
+                          </a>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
