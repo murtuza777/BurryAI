@@ -275,8 +275,8 @@ export default function DashboardOpportunitiesPage() {
       ) : null}
 
       <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(2,6,23,0.76))] px-4 py-3 shadow-[0_14px_44px_rgba(2,6,23,0.38)]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-[240px] flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
             {hasSavedOpportunityProfile ? (
               <>
                 <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">
