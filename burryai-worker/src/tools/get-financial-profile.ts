@@ -33,7 +33,7 @@ export const getFinancialProfileTool: ToolDefinition<typeof baseToolInputSchema,
         .first<FinancialProfileRow>()
 
       return {
-        monthlyIncome: Number((profile?.monthly_income ?? input.context.monthlyIncome).toFixed(2)),
+        monthlyIncome: Number(input.context.monthlyIncome.toFixed(2)),
         savingsGoal: Number((profile?.savings_goal ?? 0).toFixed(2)),
         currency: profile?.currency ?? "USD",
         riskTolerance: profile?.risk_tolerance ?? "moderate",
