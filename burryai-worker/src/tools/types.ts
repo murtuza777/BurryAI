@@ -11,6 +11,7 @@ export const baseToolInputSchema = z.object({
 export type ToolExecutionContext = {
   db: D1Database
   searchEnv?: SearchProviderEnv
+  expenseCategoriesOverride?: AgentContextData["topExpenseCategories"]
 }
 
 export type ToolDefinition<TInput extends z.ZodType, TOutput extends z.ZodType> = {

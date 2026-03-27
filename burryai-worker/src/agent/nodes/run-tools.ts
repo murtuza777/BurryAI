@@ -7,6 +7,7 @@ export async function runSelectedTools(params: {
   selectedTools: AgentToolName[]
   context: AgentContextData
   userMessage: string
+  expenseCategoriesOverride?: AgentContextData["topExpenseCategories"]
   searchEnv?: {
     provider?: string
     tavilyApiKey?: string
@@ -19,6 +20,7 @@ export async function runSelectedTools(params: {
     context: params.context,
     selectedTools: params.selectedTools,
     userMessage: params.userMessage,
+    expenseCategoriesOverride: params.expenseCategoriesOverride,
     searchEnv: params.searchEnv
   })
 }

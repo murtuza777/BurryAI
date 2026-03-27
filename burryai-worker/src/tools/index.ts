@@ -26,6 +26,7 @@ export async function executeTools(params: {
   context: AgentContextData
   selectedTools: AgentToolName[]
   userMessage: string
+  expenseCategoriesOverride?: AgentContextData["topExpenseCategories"]
   searchEnv?: {
     provider?: string
     tavilyApiKey?: string
@@ -42,7 +43,11 @@ export async function executeTools(params: {
       context: params.context,
       userMessage: params.userMessage
     })
-    const rawOutput = await tool.run(input, { db: params.db, searchEnv: params.searchEnv })
+    const rawOutput = await tool.run(input, {
+      db: params.db,
+      searchEnv: params.searchEnv,
+      expenseCategoriesOverride: params.expenseCategoriesOverride
+    })
     const parsedOutput = tool.outputSchema.parse(rawOutput)
     const summary = tool.summarize(parsedOutput)
     outputs.push(createToolOutput(name, summary, parsedOutput))
