@@ -313,6 +313,14 @@ export interface CostAnalysisResponse {
   knowledge_sources: Array<{ title: string; source: string }>
 }
 
+export interface CostAnalysisInput {
+  monthlyIncome?: number
+  categories?: Array<{
+    category: string
+    amount: number
+  }>
+}
+
 export interface OpportunitySearchInput {
   query?: string
   mode?: "auto" | WorkMode
@@ -366,12 +374,13 @@ export interface OpportunitySearchResponse {
   generated_queries: string[]
 }
 
-export async function getCostAnalysis(): Promise<CostAnalysisResponse> {
+export async function getCostAnalysis(input?: CostAnalysisInput): Promise<CostAnalysisResponse> {
   const response = await apiRequest("agent/cost-analysis", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    body: JSON.stringify(input ?? {})
   })
   if (!response.ok) throw new Error(await parseError(response))
   return (await response.json()) as CostAnalysisResponse
