@@ -1,4 +1,4 @@
-import { buildAgentContext } from "./nodes/build-context"
+import { applyContextOverrides, buildAgentContext } from "./nodes/build-context"
 import { detectIntent } from "./nodes/detect-intent"
 import { generateAgentResponse } from "./nodes/generate-response"
 import { runSelectedTools } from "./nodes/run-tools"
@@ -11,6 +11,13 @@ export async function runFinancialAgent(params: {
   db: D1Database
   userId: string
   userMessage: string
+  contextOverride?: {
+    monthlyIncome?: number
+    topExpenseCategories?: Array<{
+      category: string
+      amount: number
+    }>
+  }
   knowledgeIndex?: Vectorize
   aiBinding?: {
     run: (model: string, input: unknown) => Promise<unknown>
@@ -24,7 +31,8 @@ export async function runFinancialAgent(params: {
   serperApiKey?: string
 }): Promise<AgentState> {
   const intent = detectIntent(params.userMessage)
-  const context = await buildAgentContext(params.db, params.userId)
+  const baseContext = await buildAgentContext(params.db, params.userId)
+  const context = applyContextOverrides(baseContext, params.contextOverride)
   const selectedTools = selectToolsByIntent(intent)
   const toolOutputs = await runSelectedTools({
     db: params.db,
@@ -32,6 +40,7 @@ export async function runFinancialAgent(params: {
     selectedTools,
     context,
     userMessage: params.userMessage,
+    expenseCategoriesOverride: params.contextOverride?.topExpenseCategories,
     searchEnv: {
       provider: params.webSearchProvider,
       tavilyApiKey: params.tavilyApiKey,
