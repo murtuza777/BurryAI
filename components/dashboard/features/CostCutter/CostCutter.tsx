@@ -1,23 +1,28 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { HolographicCard } from '@/components/dashboard/HolographicUI'
 import {
-  Scissors,
-  PiggyBank,
   AlertTriangle,
-  DollarSign,
-  ShoppingBag,
+  ArrowRight,
+  Brain,
   Coffee,
   Home,
-  Car,
   Loader2,
-  Brain,
+  PencilLine,
+  PiggyBank,
+  ShoppingBag,
   Sparkles,
+  Car,
+  Wallet,
   TrendingDown,
-  Zap,
-  RefreshCw
+  Target,
+  CheckCircle2,
+  Scissors
 } from 'lucide-react'
-import { Doughnut, Bar } from 'react-chartjs-2'
+import { Doughnut } from 'react-chartjs-2'
 import { getCostAnalysis, type CostAnalysisResponse } from '@/lib/financial-client'
+import { Button } from '@/components/ui/button'
+import { renderAssistantContent } from '@/components/dashboard/shared/render-assistant-content'
 
 interface CostCutterProps {
   userData: {
@@ -26,6 +31,7 @@ interface CostCutterProps {
     country: string
     categories: Array<{ category: string; amount: number; percentage: number }>
   }
+  isGuest?: boolean
 }
 
 const ICON_MAP: Record<string, typeof Home> = {
@@ -37,6 +43,7 @@ const ICON_MAP: Record<string, typeof Home> = {
   groceries: Coffee,
   transportation: Car,
   transport: Car,
+  travel: Car,
   shopping: ShoppingBag,
   subscriptions: ShoppingBag,
   education: ShoppingBag,
@@ -49,363 +56,352 @@ function getIcon(category: string) {
 }
 
 function formatModelUsed(modelUsed?: string): string {
-  if (!modelUsed) return ""
-  if (modelUsed.startsWith("gemini:")) return modelUsed.replace("gemini:", "")
-  if (modelUsed.startsWith("workers-ai:")) {
-    const [providerModel, routeInfo] = modelUsed.split("|route:")
-    const cleanedModel = providerModel.replace("workers-ai:", "")
+  if (!modelUsed) return ''
+  if (modelUsed.startsWith('gemini:')) return modelUsed.replace('gemini:', '')
+  if (modelUsed.startsWith('workers-ai:')) {
+    const [providerModel, routeInfo] = modelUsed.split('|route:')
+    const cleanedModel = providerModel.replace('workers-ai:', '')
     if (!routeInfo) return cleanedModel
-    return `${cleanedModel} (${routeInfo.replace("|selected:", ", selected: ")})`
+    return `${cleanedModel} (${routeInfo.replace('|selected:', ', selected: ')})`
   }
   return modelUsed
 }
 
-/* Simple markdown inline formatter */
-function formatInline(text: string): JSX.Element[] {
-  const parts: JSX.Element[] = []
-  let remaining = text
-  let key = 0
-  while (remaining.length > 0) {
-    const bold = remaining.match(/\*\*(.+?)\*\*/)
-    if (bold && bold.index !== undefined) {
-      if (bold.index > 0) parts.push(<span key={key++}>{remaining.slice(0, bold.index)}</span>)
-      parts.push(<strong key={key++} className="text-cyan-200 font-semibold">{bold[1]}</strong>)
-      remaining = remaining.slice(bold.index + bold[0].length)
-    } else {
-      parts.push(<span key={key++}>{remaining}</span>)
-      remaining = ""
-    }
-  }
-  return parts
+function formatCurrency(value: number): string {
+  return `$${value.toLocaleString()}`
 }
 
-function renderAnalysis(text: string): JSX.Element[] {
-  const lines = text.split("\n")
-  const elements: JSX.Element[] = []
-  let listItems: string[] = []
-  let listKey = 0
-
-  function flushList() {
-    if (listItems.length === 0) return
-    elements.push(
-      <ul key={`list-${listKey++}`} className="list-disc list-inside space-y-1 my-2 text-slate-300 text-sm">
-        {listItems.map((item, i) => (
-          <li key={i} className="leading-relaxed">{formatInline(item)}</li>
-        ))}
-      </ul>
-    )
-    listItems = []
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim()
-    if (trimmed.startsWith("### ")) {
-      flushList()
-      elements.push(
-        <h4 key={`h4-${i}`} className="text-sm font-bold text-cyan-300 mt-4 mb-1 uppercase tracking-wide flex items-center gap-2">
-          <Zap className="w-3 h-3" />
-          {formatInline(trimmed.slice(4))}
-        </h4>
-      )
-    } else if (trimmed.startsWith("## ")) {
-      flushList()
-      elements.push(
-        <h3 key={`h3-${i}`} className="text-base font-bold text-cyan-200 mt-4 mb-1">
-          {formatInline(trimmed.slice(3))}
-        </h3>
-      )
-    } else if (/^[-*•]\s/.test(trimmed)) {
-      listItems.push(trimmed.replace(/^[-*•]\s+/, ""))
-    } else if (/^\d+\.\s/.test(trimmed)) {
-      listItems.push(trimmed.replace(/^\d+\.\s+/, ""))
-    } else if (trimmed === "") {
-      flushList()
-    } else {
-      flushList()
-      elements.push(
-        <p key={`p-${i}`} className="leading-relaxed text-slate-300 text-sm my-1">
-          {formatInline(trimmed)}
-        </p>
-      )
-    }
-  }
-  flushList()
-  return elements
-}
-
-export function CostCutter({ userData }: CostCutterProps) {
+export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
+  const router = useRouter()
   const [aiAnalysis, setAiAnalysis] = useState<CostAnalysisResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [error, setError] = useState('')
+
+  const hasIncome = userData.monthlyIncome > 0
+  const hasCategories = userData.categories.length > 0
+  const canAnalyze = hasIncome && hasCategories && !isGuest
 
   const loadAnalysis = useCallback(async () => {
+    if (isGuest) {
+      setError('Sign in to run AI cost analysis.')
+      return
+    }
+
+    if (!hasIncome || !hasCategories) {
+      setError('Add your monthly income and saved spending categories in Profile before starting Cost Cutter.')
+      return
+    }
+
     setLoading(true)
-    setError("")
+    setError('')
     try {
-      const result = await getCostAnalysis()
+      const result = await getCostAnalysis({
+        monthlyIncome: userData.monthlyIncome,
+        categories: userData.categories.map((item) => ({
+          category: item.category,
+          amount: item.amount
+        }))
+      })
       setAiAnalysis(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load AI cost analysis")
+      setError(err instanceof Error ? err.message : 'Failed to load AI cost analysis')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [hasCategories, hasIncome, isGuest, userData.categories, userData.monthlyIncome])
 
-  useEffect(() => {
-    void loadAnalysis()
-  }, [loadAnalysis])
-
-  const categories = aiAnalysis?.context.topExpenseCategories ?? userData.categories
-  const totalExpenses = aiAnalysis?.context.monthlyExpenses ?? userData.monthlyExpenses
-  const monthlyIncome = aiAnalysis?.context.monthlyIncome ?? userData.monthlyIncome
+  const categories = userData.categories
+  const totalExpenses = categories.reduce((sum, item) => sum + item.amount, 0)
+  const monthlyIncome = userData.monthlyIncome
+  const unassignedIncome = Math.max(monthlyIncome - totalExpenses, 0)
+  const savingsRate = monthlyIncome > 0 ? Math.max(((monthlyIncome - totalExpenses) / monthlyIncome) * 100, 0) : 0
+  const estimatedCut = categories.reduce((sum, item) => sum + item.amount * 0.1, 0)
+  const topCategory = categories[0]
 
   const expenseCategories = useMemo(() => {
-    return (categories as Array<{ category: string; amount: number }>).slice(0, 6).map((item) => {
+    return categories.slice(0, 6).map((item) => {
       const Icon = getIcon(item.category)
-      return { ...item, icon: Icon, potential: item.amount * 0.9 }
+      const suggestedCut = Number((item.amount * 0.1).toFixed(2))
+      return { ...item, icon: Icon, suggestedCut }
     })
   }, [categories])
 
-  const totalSavingsPotential = expenseCategories.reduce((acc, cat) => acc + (cat.amount - cat.potential), 0)
-
-  const chartColors = [
-    'rgba(34, 211, 238, 0.8)',
-    'rgba(56, 189, 248, 0.7)',
-    'rgba(14, 165, 233, 0.65)',
-    'rgba(2, 132, 199, 0.6)',
-    'rgba(6, 182, 212, 0.55)',
-    'rgba(103, 232, 249, 0.5)'
-  ]
-
   const chartData = {
     labels: expenseCategories.map((cat) => cat.category),
-    datasets: [{
-      data: expenseCategories.map((cat) => cat.amount),
-      backgroundColor: chartColors.slice(0, expenseCategories.length),
-      borderColor: 'rgba(6, 182, 212, 0.3)',
-      borderWidth: 1
-    }]
-  }
-
-  const savingsChartData = {
-    labels: ['Current Spend', 'After AI Cuts'],
-    datasets: [{
-      label: 'Monthly Expenses',
-      data: [totalExpenses, Math.max(totalExpenses - totalSavingsPotential, 0)],
-      backgroundColor: ['rgba(244, 63, 94, 0.7)', 'rgba(16, 185, 129, 0.7)'],
-      borderColor: ['rgba(244, 63, 94, 1)', 'rgba(16, 185, 129, 1)'],
-      borderWidth: 1,
-      borderRadius: 8
-    }]
+    datasets: [
+      {
+        data: expenseCategories.map((cat) => cat.amount),
+        backgroundColor: ['#f4a261', '#e76f51', '#2a9d8f', '#264653', '#8ab17d', '#e9c46a'],
+        borderColor: '#07111f',
+        borderWidth: 3
+      }
+    ]
   }
 
   return (
-    <div className="space-y-6 w-full">
-      {/* AI Analysis Status Banner */}
-      {loading ? (
-        <HolographicCard className="!p-0 overflow-hidden">
-          <div className="relative flex items-center gap-4 px-6 py-5">
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-sky-500/5 to-transparent" />
-            <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400/20 to-sky-500/20 border border-cyan-500/20">
-              <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
-            </div>
-            <div className="relative">
-              <p className="font-semibold text-white">AI is analyzing your expenses…</p>
-              <p className="text-sm text-slate-400 mt-0.5">Running cost-cutter tools and generating personalized recommendations</p>
-            </div>
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-[28px] border border-slate-800 bg-[linear-gradient(135deg,rgba(249,115,22,0.12),transparent_40%),linear-gradient(180deg,rgba(10,15,28,0.98),rgba(8,12,22,0.96))] p-6 shadow-[0_24px_60px_rgba(3,7,18,0.45)]">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-300/80">Cost Cutter</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Cut spending only from the categories you actually saved</h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
+              This page uses your saved Profile spending setup only. No extra essential bucket, no fake comparison budget, just your income versus the categories you entered.
+            </p>
           </div>
-        </HolographicCard>
-      ) : null}
 
-      {error ? (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-rose-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
-            <span className="text-sm">{error}</span>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push('/dashboard/profile')}
+              className="border-slate-700 bg-slate-950/70 hover:bg-slate-900"
+            >
+              <PencilLine className="mr-2 h-4 w-4" />
+              Edit profile spending
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void loadAnalysis()}
+              disabled={!canAnalyze || loading}
+              className="bg-orange-300 text-slate-950 hover:bg-orange-200 disabled:bg-slate-700 disabled:text-slate-300"
+            >
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+              Analyze with AI
+            </Button>
           </div>
-          <button
-            onClick={() => void loadAnalysis()}
-            className="flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 hover:bg-rose-500/20 transition-colors"
-          >
-            <RefreshCw className="w-3 h-3" />
-            Retry
-          </button>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Monthly income</p>
+            <p className="mt-3 text-2xl font-semibold text-white">{hasIncome ? formatCurrency(monthlyIncome) : 'Missing'}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Saved categories</p>
+            <p className="mt-3 text-2xl font-semibold text-white">{categories.length}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Total planned spend</p>
+            <p className="mt-3 text-2xl font-semibold text-white">{formatCurrency(totalExpenses)}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Left from income</p>
+            <p className="mt-3 text-2xl font-semibold text-emerald-300">{formatCurrency(unassignedIncome)}</p>
+          </div>
+        </div>
+      </section>
+
+      {isGuest ? (
+        <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Guest mode can view Cost Cutter, but AI analysis needs a saved account and Profile spending data.
         </div>
       ) : null}
 
-      {/* Charts Row */}
-      <div className="flex flex-col lg:flex-row gap-6 w-full">
-        <HolographicCard className="flex-1 !p-0 overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-slate-800/40 px-5 py-4 bg-slate-950/40">
-            <Scissors className="w-5 h-5 text-cyan-400" />
-            <h3 className="text-lg font-semibold">Expense Breakdown</h3>
+      {error ? (
+        <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
+          <div className="border-b border-slate-800/70 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-orange-300" />
+              <h3 className="text-lg font-semibold text-white">Budget snapshot</h3>
+            </div>
+            <p className="mt-1 text-sm text-slate-400">A simple view of the money you assigned in Profile.</p>
           </div>
-          <div className="p-5 h-72">
+          <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                <Target className="h-4 w-4 text-orange-300" />
+                Spending load
+              </div>
+              <p className="mt-3 text-3xl font-semibold text-white">
+                {monthlyIncome > 0 ? `${((totalExpenses / monthlyIncome) * 100).toFixed(1)}%` : '0%'}
+              </p>
+              <p className="mt-2 text-sm text-slate-400">Of your income is already assigned to saved categories.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                <PiggyBank className="h-4 w-4 text-emerald-300" />
+                Current savings room
+              </div>
+              <p className="mt-3 text-3xl font-semibold text-white">{savingsRate.toFixed(1)}%</p>
+              <p className="mt-2 text-sm text-slate-400">Income left after the categories you saved.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                <Scissors className="h-4 w-4 text-cyan-300" />
+                Quick cut estimate
+              </div>
+              <p className="mt-3 text-3xl font-semibold text-white">{formatCurrency(estimatedCut)}</p>
+              <p className="mt-2 text-sm text-slate-400">A flat 10% trim across saved categories before AI advice.</p>
+            </div>
+          </div>
+        </HolographicCard>
+
+        <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
+          <div className="border-b border-slate-800/70 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <TrendingDown className="h-5 w-5 text-orange-300" />
+              <h3 className="text-lg font-semibold text-white">Biggest pressure point</h3>
+            </div>
+            <p className="mt-1 text-sm text-slate-400">Start here if you want the fastest improvement.</p>
+          </div>
+          <div className="p-5">
+            {topCategory ? (
+              <div className="rounded-[24px] border border-orange-400/20 bg-orange-500/8 p-5">
+                <p className="text-xs uppercase tracking-[0.24em] text-orange-300/80">Largest category</p>
+                <p className="mt-3 text-2xl font-semibold text-white">{topCategory.category}</p>
+                <p className="mt-2 text-lg text-slate-200">{formatCurrency(topCategory.amount)}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  This category alone takes{' '}
+                  <span className="font-semibold text-white">
+                    {monthlyIncome > 0 ? `${((topCategory.amount / monthlyIncome) * 100).toFixed(1)}%` : '0%'}
+                  </span>{' '}
+                  of your monthly income.
+                </p>
+                <div className="mt-4 inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                  A 10% trim here saves {formatCurrency(topCategory.amount * 0.1)}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">Add spending categories in Profile to surface your largest cost area.</p>
+            )}
+          </div>
+        </HolographicCard>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
+          <div className="border-b border-slate-800/70 px-5 py-4">
+            <h3 className="text-lg font-semibold text-white">Where your money goes</h3>
+            <p className="mt-1 text-sm text-slate-400">Only the categories saved in Profile are shown here.</p>
+          </div>
+          <div className="p-5 h-[340px]">
             {expenseCategories.length > 0 ? (
               <Doughnut
                 data={chartData}
                 options={{
                   responsive: true,
                   maintainAspectRatio: false,
-                  cutout: '60%',
+                  cutout: '58%',
                   plugins: {
                     legend: {
-                      position: 'right',
-                      labels: { color: '#cbd5e1', padding: 10, usePointStyle: true, pointStyleWidth: 8 }
+                      position: 'bottom',
+                      labels: {
+                        color: '#cbd5e1',
+                        padding: 18,
+                        usePointStyle: true,
+                        pointStyleWidth: 10
+                      }
                     }
                   }
                 }}
               />
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
-                Add expenses to see breakdown
+              <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                No saved spending categories yet.
               </div>
             )}
           </div>
         </HolographicCard>
 
-        <HolographicCard className="flex-1 !p-0 overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-slate-800/40 px-5 py-4 bg-slate-950/40">
-            <PiggyBank className="w-5 h-5 text-emerald-400" />
-            <h3 className="text-lg font-semibold">Savings Potential</h3>
-            {totalSavingsPotential > 0 ? (
-              <span className="ml-auto text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5">
-                Save ${totalSavingsPotential.toFixed(0)}/mo
-              </span>
-            ) : null}
+        <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
+          <div className="border-b border-slate-800/70 px-5 py-4">
+            <h3 className="text-lg font-semibold text-white">Saved category list</h3>
+            <p className="mt-1 text-sm text-slate-400">Use this to see what is worth cutting before you run AI.</p>
           </div>
-          <div className="p-5 h-72">
-            <Bar
-              data={savingsChartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8', callback: (v) => `$${v}` }
-                  },
-                  x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
-                }
-              }}
-            />
+          <div className="divide-y divide-slate-800/70">
+            {expenseCategories.length > 0 ? (
+              expenseCategories.map((category) => {
+                const Icon = category.icon
+                const shareOfIncome = monthlyIncome > 0 ? (category.amount / monthlyIncome) * 100 : 0
+
+                return (
+                  <div key={category.category} className="flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/80">
+                        <Icon className="h-4 w-4 text-orange-300" />
+                      </div>
+                      <div>
+                        <p className="text-base font-medium text-white">{category.category}</p>
+                        <p className="mt-1 text-sm text-slate-400">
+                          {shareOfIncome.toFixed(1)}% of income
+                          {' '}| Suggested first-pass cut {formatCurrency(category.suggestedCut)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-left md:text-right">
+                      <p className="text-lg font-semibold text-white">{formatCurrency(category.amount)}</p>
+                      <p className="mt-1 text-sm text-slate-400">{category.percentage.toFixed(1)}% of saved spending</p>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="px-5 py-8 text-sm text-slate-400">
+                Add categories like food, travel, housing, subscriptions, or shopping in Profile to start using Cost Cutter.
+              </div>
+            )}
           </div>
         </HolographicCard>
       </div>
 
-      {/* Category Cards */}
-      <HolographicCard className="!p-0 overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-slate-800/40 px-5 py-4 bg-slate-950/40">
-          <TrendingDown className="w-5 h-5 text-cyan-400" />
-          <h3 className="text-lg font-semibold">Category Analysis</h3>
+      <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
+        <div className="border-b border-slate-800/70 px-5 py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white">AI cost-cutting plan</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Personalized savings ideas based only on your saved income and category totals.
+              </p>
+            </div>
+            {aiAnalysis?.model_used ? (
+              <div className="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1 text-xs text-slate-300">
+                <Sparkles className="mr-2 h-3.5 w-3.5 text-orange-300" />
+                {formatModelUsed(aiAnalysis.model_used)}
+              </div>
+            ) : null}
+          </div>
         </div>
-        <div className="p-5">
-          {expenseCategories.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">Add expense categories to unlock analysis.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {expenseCategories.map((category, index) => {
-                const Icon = category.icon
-                const ratio =
-                  monthlyIncome > 0
-                    ? ((category.amount / monthlyIncome) * 100).toFixed(1)
-                    : "0"
-                return (
-                  <div
-                    key={index}
-                    className="rounded-xl border border-slate-700/50 bg-gradient-to-br from-slate-900/80 to-slate-950/60 p-4 hover:border-cyan-500/20 transition-all duration-300"
+
+        {loading ? (
+          <div className="flex items-center gap-3 px-5 py-6 text-sm text-slate-300">
+            <Loader2 className="h-5 w-5 animate-spin text-orange-300" />
+            Building a savings plan from your saved categories...
+          </div>
+        ) : aiAnalysis ? (
+          <div className="space-y-4 px-5 py-5">
+            {renderAssistantContent(aiAnalysis.analysis)}
+          </div>
+        ) : (
+          <div className="px-5 py-8">
+            <div className="rounded-[24px] border border-dashed border-slate-700 bg-slate-950/50 p-6">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-300" />
+                <div>
+                  <p className="text-base font-medium text-white">Ready for analysis</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    Press <span className="font-medium text-slate-200">Analyze with AI</span> to get targeted suggestions on where to reduce spending and how much you may be able to save.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void loadAnalysis()}
+                    disabled={!canAnalyze}
+                    className="mt-4 inline-flex items-center text-sm font-medium text-orange-300 transition hover:text-orange-200 disabled:text-slate-600"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/15">
-                          <Icon className="w-4 h-4 text-cyan-400" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-sm">{category.category}</h4>
-                          <p className="text-xs text-slate-500">{ratio}% of income</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-base">${category.amount.toFixed(0)}</p>
-                        <p className="text-xs text-emerald-400 font-medium">
-                          Save ${(category.amount - category.potential).toFixed(0)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-sky-500 transition-all duration-500"
-                        style={{ width: `${category.amount > 0 ? (category.potential / category.amount) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </HolographicCard>
-
-      {/* AI Recommendations */}
-      {aiAnalysis && !loading ? (
-        <HolographicCard className="!p-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-800/40 px-5 py-4 bg-slate-950/40">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-sky-500/20 border border-cyan-500/20">
-                <Brain className="w-4 h-4 text-cyan-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">AI Cost-Cutting Recommendations</h3>
-                <p className="text-xs text-slate-500">Personalized by BurryAI</p>
+                    Start AI analysis
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {aiAnalysis.model_used ? (
-                <span className="text-xs text-cyan-400/70 bg-cyan-500/5 border border-cyan-500/15 rounded-full px-2.5 py-0.5 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
-                  {formatModelUsed(aiAnalysis.model_used)}
-                </span>
-              ) : null}
-              <button
-                onClick={() => void loadAnalysis()}
-                disabled={loading}
-                className="flex items-center gap-1 rounded-lg border border-slate-700/50 bg-slate-900/60 px-2.5 py-1.5 text-xs text-slate-400 hover:text-cyan-300 hover:border-cyan-500/20 transition-colors"
-              >
-                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
-            </div>
           </div>
-          <div className="px-6 py-5 max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-            {renderAnalysis(aiAnalysis.analysis)}
-          </div>
-        </HolographicCard>
-      ) : null}
-
-      {/* Cost of Living Analysis */}
-      <HolographicCard className="!p-0 overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-slate-800/40 px-5 py-4 bg-slate-950/40">
-          <DollarSign className="w-5 h-5 text-cyan-400" />
-          <h3 className="text-lg font-semibold">Cost of Living — {userData.country}</h3>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-slate-700/40 bg-slate-900/50 p-4 text-center">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Your Expenses</p>
-              <p className="text-2xl font-bold text-white">${totalExpenses.toLocaleString()}</p>
-            </div>
-            <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-4 text-center">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Avg Student</p>
-              <p className="text-2xl font-bold text-cyan-400">${(totalExpenses * 0.9).toFixed(0)}</p>
-            </div>
-            <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-4 text-center">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">AI Target</p>
-              <p className="text-2xl font-bold text-emerald-400">${(totalExpenses * 0.8).toFixed(0)}</p>
-            </div>
-          </div>
-        </div>
+        )}
       </HolographicCard>
     </div>
   )
