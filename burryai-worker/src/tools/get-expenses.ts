@@ -35,6 +35,14 @@ export const getExpensesTool: ToolDefinition<typeof baseToolInputSchema, typeof 
   inputSchema: baseToolInputSchema,
   outputSchema,
   async run(input, ctx) {
+    if (ctx.expenseCategoriesOverride && ctx.expenseCategoriesOverride.length > 0) {
+      return {
+        totalMonthlyExpenses: input.context.monthlyExpenses,
+        topCategories: ctx.expenseCategoriesOverride,
+        recentExpenses: []
+      }
+    }
+
     const [categoryRows, recentRows] = await Promise.all([
       ctx.db
         .prepare(
