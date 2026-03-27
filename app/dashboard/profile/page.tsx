@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserRound } from 'lucide-react'
+import { Plus, Trash2, UserRound, WalletCards } from 'lucide-react'
 
 import { HolographicCard } from '@/components/dashboard/HolographicUI'
 import { Button } from '@/components/ui/button'
@@ -10,11 +10,15 @@ import FinanceLoader from '@/components/ui/FinanceLoader'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
+import { PROFILE_SPENDING_DESCRIPTION, getProfileSpendingExpenses } from '@/lib/profile-spending'
 import {
   createExpense,
   createLoan,
+  deleteExpense,
   getFinancialProfile,
+  getExpenses,
   updateFinancialProfile,
+  type ExpenseItem,
   type RiskTolerance,
   type WorkMode
 } from '@/lib/financial-client'
@@ -36,6 +40,61 @@ type ProfileForm = {
   monthly_income: number
   savings_goal: number
   risk_tolerance: RiskTolerance
+}
+
+type SpendingRow = {
+  id: string
+  category: string
+  amount: string
+}
+
+const DEFAULT_SPENDING_CATEGORIES = ['Food', 'Travel', 'Housing']
+
+function createSpendingRow(category = '', amount = ''): SpendingRow {
+  return {
+    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+    category,
+    amount
+  }
+}
+
+function buildDefaultSpendingRows(): SpendingRow[] {
+  return DEFAULT_SPENDING_CATEGORIES.map((category) => createSpendingRow(category, ''))
+}
+
+function toSpendingRows(expenses: ExpenseItem[]): SpendingRow[] {
+  const relevantExpenses = getProfileSpendingExpenses(expenses)
+  if (relevantExpenses.length === 0) {
+    return buildDefaultSpendingRows()
+  }
+
+  const grouped = new Map<string, number>()
+  for (const expense of relevantExpenses) {
+    grouped.set(expense.category, (grouped.get(expense.category) ?? 0) + expense.amount)
+  }
+
+  return Array.from(grouped.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, amount]) => createSpendingRow(category, amount.toFixed(2)))
+}
+
+function normalizeSpendingRows(rows: SpendingRow[]): Array<{ category: string; amount: number }> {
+  const grouped = new Map<string, number>()
+
+  for (const row of rows) {
+    const category = row.category.trim()
+    const amount = Number(row.amount)
+
+    if (category.length === 0 || !Number.isFinite(amount) || amount <= 0) {
+      continue
+    }
+
+    grouped.set(category, Number(((grouped.get(category) ?? 0) + amount).toFixed(2)))
+  }
+
+  return Array.from(grouped.entries())
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount)
 }
 
 function toCsv(items: string[]): string {
@@ -60,6 +119,7 @@ export default function DashboardProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [profileForm, setProfileForm] = useState<ProfileForm>({
     full_name: '',
     country: '',
@@ -78,12 +138,8 @@ export default function DashboardProfilePage() {
     savings_goal: 0,
     risk_tolerance: 'moderate'
   })
-  const [newExpense, setNewExpense] = useState({
-    amount: 0,
-    category: '',
-    description: '',
-    date: new Date().toISOString().slice(0, 10)
-  })
+  const [spendingRows, setSpendingRows] = useState<SpendingRow[]>(buildDefaultSpendingRows)
+  const [storedSpendingExpenseIds, setStoredSpendingExpenseIds] = useState<string[]>([])
   const [newLoan, setNewLoan] = useState({
     loan_name: '',
     loan_amount: 0,
@@ -99,9 +155,10 @@ export default function DashboardProfilePage() {
     }
 
     setError('')
+    setSuccess('')
     setLoading(true)
     try {
-      const profileData = await getFinancialProfile()
+      const [profileData, expenseData] = await Promise.all([getFinancialProfile(), getExpenses()])
       setProfileForm({
         full_name: profileData.full_name,
         country: profileData.country,
@@ -120,6 +177,9 @@ export default function DashboardProfilePage() {
         savings_goal: profileData.savings_goal,
         risk_tolerance: profileData.risk_tolerance
       })
+      const profileSpendingExpenses = getProfileSpendingExpenses(expenseData.expenses)
+      setSpendingRows(toSpendingRows(expenseData.expenses))
+      setStoredSpendingExpenseIds(profileSpendingExpenses.map((expense) => expense.id))
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load profile')
     } finally {
@@ -136,6 +196,7 @@ export default function DashboardProfilePage() {
     if (!user || isGuest) return
     setSaving(true)
     setError('')
+    setSuccess('')
     try {
       const updated = await updateFinancialProfile({
         full_name: profileForm.full_name,
@@ -155,6 +216,22 @@ export default function DashboardProfilePage() {
         savings_goal: Number(profileForm.savings_goal || 0),
         risk_tolerance: profileForm.risk_tolerance
       })
+
+      const normalizedSpendingRows = normalizeSpendingRows(spendingRows)
+
+      await Promise.all(storedSpendingExpenseIds.map((id) => deleteExpense(id)))
+      const currentDate = new Date().toISOString().slice(0, 10)
+      const createdExpenses = await Promise.all(
+        normalizedSpendingRows.map((row) =>
+          createExpense({
+            category: row.category,
+            amount: row.amount,
+            description: PROFILE_SPENDING_DESCRIPTION,
+            date: currentDate
+          })
+        )
+      )
+
       setProfileForm({
         full_name: updated.full_name,
         country: updated.country,
@@ -173,6 +250,13 @@ export default function DashboardProfilePage() {
         savings_goal: updated.savings_goal,
         risk_tolerance: updated.risk_tolerance
       })
+      setStoredSpendingExpenseIds(createdExpenses.map((expense) => expense.id))
+      setSpendingRows(
+        normalizedSpendingRows.length > 0
+          ? normalizedSpendingRows.map((row) => createSpendingRow(row.category, row.amount.toFixed(2)))
+          : buildDefaultSpendingRows()
+      )
+      setSuccess('Profile details and monthly spending setup saved.')
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Failed to save profile')
     } finally {
@@ -180,25 +264,10 @@ export default function DashboardProfilePage() {
     }
   }
 
-  async function handleCreateExpense() {
-    if (isGuest || !newExpense.category || newExpense.amount <= 0) return
-    setError('')
-    try {
-      await createExpense({
-        category: newExpense.category,
-        amount: Number(newExpense.amount),
-        description: newExpense.description || undefined,
-        date: newExpense.date || undefined
-      })
-      setNewExpense({ amount: 0, category: '', description: '', date: new Date().toISOString().slice(0, 10) })
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : 'Failed to add expense')
-    }
-  }
-
   async function handleCreateLoan() {
     if (isGuest || newLoan.loan_amount <= 0 || newLoan.monthly_payment <= 0) return
     setError('')
+    setSuccess('')
     try {
       await createLoan({
         loan_name: newLoan.loan_name || undefined,
@@ -214,9 +283,43 @@ export default function DashboardProfilePage() {
         monthly_payment: 0,
         next_payment_date: ''
       })
+      setSuccess('Loan added successfully.')
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Failed to add loan')
     }
+  }
+
+  const normalizedSpendingRows = useMemo(
+    () => normalizeSpendingRows(spendingRows),
+    [spendingRows]
+  )
+
+  const spendingSetupTotal = useMemo(
+    () => normalizedSpendingRows.reduce((sum, row) => sum + row.amount, 0),
+    [normalizedSpendingRows]
+  )
+
+  function updateSpendingRow(id: string, key: 'category' | 'amount', value: string) {
+    setSuccess('')
+    setSpendingRows((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, [key]: value } : row))
+    )
+  }
+
+  function addSpendingRow() {
+    setSuccess('')
+    setSpendingRows((prev) => [...prev, createSpendingRow()])
+  }
+
+  function removeSpendingRow(id: string) {
+    setSuccess('')
+    setSpendingRows((prev) => {
+      if (prev.length === 1) {
+        return [createSpendingRow()]
+      }
+
+      return prev.filter((row) => row.id !== id)
+    })
   }
 
   if (authLoading || loading) {
@@ -235,6 +338,10 @@ export default function DashboardProfilePage() {
 
         {error ? (
           <div className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>
+        ) : null}
+
+        {success ? (
+          <div className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{success}</div>
         ) : null}
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -454,42 +561,74 @@ export default function DashboardProfilePage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="space-y-3 rounded-xl border border-slate-700/60 bg-slate-950/50 p-5">
-            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/90">Quick Add Expense</h4>
-            <Input
-              placeholder="Category"
-              value={newExpense.category}
-              onChange={(event) => setNewExpense((prev) => ({ ...prev, category: event.target.value }))}
-              className="border-cyan-500/30 bg-slate-950/70"
-            />
-            <Input
-              type="number"
-              min={0}
-              placeholder="Amount"
-              value={newExpense.amount}
-              onChange={(event) => setNewExpense((prev) => ({ ...prev, amount: Number(event.target.value || 0) }))}
-              className="border-cyan-500/30 bg-slate-950/70"
-            />
-            <Input
-              placeholder="Description (optional)"
-              value={newExpense.description}
-              onChange={(event) => setNewExpense((prev) => ({ ...prev, description: event.target.value }))}
-              className="border-cyan-500/30 bg-slate-950/70"
-            />
-            <Input
-              type="date"
-              value={newExpense.date}
-              onChange={(event) => setNewExpense((prev) => ({ ...prev, date: event.target.value }))}
-              className="border-cyan-500/30 bg-slate-950/70"
-            />
-            <Button
-              type="button"
-              onClick={() => void handleCreateExpense()}
-              disabled={isGuest}
-              className="rounded-xl border border-cyan-300/60 bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 shadow-[0_10px_30px_rgba(34,211,238,0.35)] hover:bg-cyan-300"
-            >
-              Add expense
-            </Button>
+          <div className="space-y-4 rounded-xl border border-slate-700/60 bg-slate-950/50 p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/90">
+                  <WalletCards className="h-4 w-4 text-cyan-300" />
+                  Monthly Spending Setup
+                </h4>
+                <p className="mt-2 text-sm text-slate-400">
+                  Save your core monthly categories here. Cost Cutter uses this saved setup for AI analysis.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addSpendingRow}
+                className="border-slate-700 bg-slate-900/80 hover:bg-slate-800"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add other
+              </Button>
+            </div>
+
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-sm text-slate-300">
+              Saved categories: <span className="font-semibold text-white">{normalizedSpendingRows.length}</span>
+              {' '}| Monthly total: <span className="font-semibold text-white">${spendingSetupTotal.toFixed(2)}</span>
+            </div>
+
+            <div className="space-y-3">
+              {spendingRows.map((row, index) => (
+                <div key={row.id} className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px_44px]">
+                  <div className="space-y-2">
+                    <Label htmlFor={`spending-category-${row.id}`}>Category {index + 1}</Label>
+                    <Input
+                      id={`spending-category-${row.id}`}
+                      value={row.category}
+                      onChange={(event) => updateSpendingRow(row.id, 'category', event.target.value)}
+                      className="border-cyan-500/30 bg-slate-950/70"
+                      placeholder="Food, Travel, Shopping"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`spending-amount-${row.id}`}>Monthly amount</Label>
+                    <Input
+                      id={`spending-amount-${row.id}`}
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={row.amount}
+                      onChange={(event) => updateSpendingRow(row.id, 'amount', event.target.value)}
+                      className="border-cyan-500/30 bg-slate-950/70"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeSpendingRow(row.id)}
+                      className="w-full border-slate-700 bg-slate-900/80 hover:bg-slate-800"
+                      aria-label={`Remove spending category ${index + 1}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-3 rounded-xl border border-slate-700/60 bg-slate-950/50 p-5">
@@ -549,7 +688,7 @@ export default function DashboardProfilePage() {
             disabled={saving || isGuest}
             className="rounded-xl border border-cyan-300/60 bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 shadow-[0_10px_30px_rgba(34,211,238,0.35)] hover:bg-cyan-300"
           >
-            {saving ? 'Saving...' : 'Save profile'}
+            {saving ? 'Saving...' : 'Save profile and spending'}
           </Button>
         </div>
       </div>
