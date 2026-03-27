@@ -10,6 +10,21 @@ const adviceSchema = z
   })
   .strict()
 
+const costAnalysisSchema = z
+  .object({
+    monthlyIncome: z.coerce.number().nonnegative().optional(),
+    categories: z
+      .array(
+        z.object({
+          category: z.string().trim().min(1).max(80),
+          amount: z.coerce.number().nonnegative()
+        })
+      )
+      .max(20)
+      .optional()
+  })
+  .strict()
+
 async function readAdviceBody(req: Request): Promise<
   | {
       ok: true
@@ -34,6 +49,88 @@ async function readAdviceBody(req: Request): Promise<
   }
 
   return { ok: true, value: parsed.data }
+}
+
+async function readCostAnalysisBody(req: Request): Promise<
+  | {
+      ok: true
+      value: z.infer<typeof costAnalysisSchema>
+    }
+  | {
+      ok: false
+      error: string
+    }
+> {
+  let raw = ""
+
+  try {
+    raw = await req.text()
+  } catch {
+    return { ok: false, error: "Invalid request body" }
+  }
+
+  if (raw.trim().length === 0) {
+    return { ok: true, value: {} }
+  }
+
+  let payload: unknown
+
+  try {
+    payload = JSON.parse(raw)
+  } catch {
+    return { ok: false, error: "Invalid JSON body" }
+  }
+
+  const parsed = costAnalysisSchema.safeParse(payload)
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid request body" }
+  }
+
+  return { ok: true, value: parsed.data }
+}
+
+function buildCostAnalysisPrompt(input: z.infer<typeof costAnalysisSchema>): string {
+  const categories = (input.categories ?? [])
+    .filter((item) => item.category.trim().length > 0 && item.amount > 0)
+    .sort((a, b) => b.amount - a.amount)
+
+  if (categories.length === 0 && input.monthlyIncome === undefined) {
+    return (
+      "Analyze my spending in detail. For each expense category, give specific actionable tips to reduce costs. " +
+      "Calculate how much I can realistically save per category. Provide a personalized savings plan."
+    )
+  }
+
+  const lines = [
+    "Analyze my monthly spending using the numbers below.",
+    "Calculate which categories are consuming too much of my income.",
+    "For each category, estimate a realistic monthly cut and explain how to save money without making the budget unrealistic.",
+    "End with a prioritized savings plan for this month."
+  ]
+
+  lines.push(
+    "Return plain text only.",
+    "Do not use markdown headings with #, do not use tables, and do not use separator lines like ---.",
+    "Use this structure with short labels ending in a colon: Snapshot:, Pressure points:, Recommended cuts:, Monthly plan:, Action steps:.",
+    "Under each label, use short bullet points or a short numbered list.",
+    "Keep every recommendation concise and calculation-driven, not story-like."
+  )
+
+  if (input.monthlyIncome !== undefined) {
+    lines.push(`Monthly income: $${input.monthlyIncome.toFixed(2)}`)
+  }
+
+  if (categories.length > 0) {
+    lines.push(
+      `Expense categories: ${categories
+        .map((item) => `${item.category} $${item.amount.toFixed(2)}`)
+        .join(", ")}`
+    )
+  } else {
+    lines.push("Use my saved expenses for category-level analysis.")
+  }
+
+  return lines.join("\n")
 }
 
 const agentRoutes = new Hono<AppEnv>()
@@ -100,14 +197,28 @@ agentRoutes.post("/advice", async (c) => {
 })
 
 agentRoutes.post("/cost-analysis", async (c) => {
+  const body = await readCostAnalysisBody(c.req.raw)
+  if (!body.ok) {
+    return c.json({ error: body.error }, 400)
+  }
+
   try {
     const userId = c.get("userId")
     const useVectorize = c.env.ENABLE_VECTORIZE_RAG === "true"
+    const normalizedCategories = (body.value.categories ?? [])
+      .filter((item) => item.category.trim().length > 0 && item.amount > 0)
+      .sort((a, b) => b.amount - a.amount)
     const result = await runFinancialAgent({
       db: c.env.DB,
       userId,
-      userMessage:
-        "Analyze my spending in detail. For each expense category, give specific actionable tips to reduce costs. Calculate how much I can realistically save per category. Provide a personalized savings plan.",
+      userMessage: buildCostAnalysisPrompt(body.value),
+      contextOverride:
+        normalizedCategories.length > 0 || body.value.monthlyIncome !== undefined
+          ? {
+              monthlyIncome: body.value.monthlyIncome,
+              topExpenseCategories: normalizedCategories.length > 0 ? normalizedCategories : undefined
+            }
+          : undefined,
       knowledgeIndex: useVectorize ? c.env.FINANCE_KB_INDEX : undefined,
       aiBinding: c.env.AI,
       chatModel: c.env.AI_PRIMARY_MODEL,
