@@ -367,21 +367,23 @@ export default function DashboardOpportunitiesPage() {
             {searching ? 'Searching...' : 'Search listings'}
           </Button>
         </div>
-        <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           {hasSavedOpportunityProfile ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-h-8 flex-wrap items-center gap-2">
               {remoteRegions.slice(0, 3).map((region) => (
                 <Badge key={region} className="border-slate-700 bg-slate-900 text-slate-200">
                   {region}
                 </Badge>
               ))}
             </div>
-          ) : null}
+          ) : (
+            <span className="min-h-8" aria-hidden />
+          )}
           <Button
             type="button"
             variant="outline"
             onClick={() => setShowFilters((prev) => !prev)}
-            className="h-8 rounded-full border-slate-700 bg-slate-900/70 px-3 text-xs text-slate-100 hover:bg-slate-800"
+            className="h-8 shrink-0 rounded-full border-slate-700 bg-slate-900/70 px-3 text-xs text-slate-100 hover:bg-slate-800"
           >
             <Filter className="mr-1.5 h-3.5 w-3.5" />
             Filters
@@ -478,23 +480,26 @@ export default function DashboardOpportunitiesPage() {
         ) : null}
       </section>
 
-      <section className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/60 p-4 shadow-[0_20px_60px_rgba(2,6,23,0.38)] sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Results</p>
-            <h3 className="mt-1 text-xl font-semibold text-slate-100 sm:text-2xl">
-              {searchResult ? `${searchResult.opportunities.length} matched listings` : 'No search run yet'}
-            </h3>
-          </div>
-          {searchResult ? (
-            <div className="text-sm text-slate-400">
-              Mode: <span className="capitalize text-slate-200">{searchResult.filters_applied.mode}</span>
+      <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-slate-950/60 shadow-[0_12px_34px_rgba(2,6,23,0.3)]">
+        <div className="border-b border-slate-800/70 px-4 py-4 sm:px-5 sm:py-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Results</p>
+              <h3 className="mt-1 text-lg font-semibold text-slate-100 sm:text-xl">
+                {searchResult ? `${searchResult.opportunities.length} matched listings` : 'No search run yet'}
+              </h3>
             </div>
-          ) : null}
+            {searchResult ? (
+              <Badge className="shrink-0 border-slate-700 bg-slate-900/70 text-slate-200 capitalize">
+                Mode: {searchResult.filters_applied.mode}
+              </Badge>
+            ) : null}
+          </div>
         </div>
 
+        <div className="p-4 sm:p-5">
         {!searchResult ? (
-          <div className="mt-6 rounded-3xl border border-dashed border-slate-700 bg-slate-950/40 p-10 text-center">
+          <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center sm:p-10">
             <p className="text-base font-medium text-slate-200">
               {hasSavedOpportunityProfile
                 ? 'Search across direct listings and community hiring posts'
@@ -507,29 +512,29 @@ export default function DashboardOpportunitiesPage() {
             </p>
           </div>
         ) : searchResult.opportunities.length === 0 ? (
-          <div className="mt-6 rounded-3xl border border-dashed border-slate-700 bg-slate-950/40 p-10 text-center">
+          <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center sm:p-10">
             <p className="text-base font-medium text-slate-200">No strong listings matched these filters</p>
             <p className="mt-2 text-sm text-slate-400">
               Try switching mode, broadening skills, or using a shorter search phrase.
             </p>
           </div>
         ) : (
-          <div className="mt-6 space-y-6">
+          <div className="space-y-6">
             {groupedResults.map((group) => (
               <div key={group.bucket} className="space-y-4">
-                <div className="flex flex-wrap items-end justify-between gap-3 rounded-3xl border border-slate-800/70 bg-slate-950/40 px-4 py-3">
-                  <div>
+                <div className="flex flex-col gap-2 rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{group.items.length} listings</p>
-                    <h4 className="mt-1 text-lg font-semibold text-slate-100">{SOURCE_BUCKET_LABELS[group.bucket].title}</h4>
+                    <h4 className="mt-1 text-base font-semibold text-slate-100 sm:text-lg">{SOURCE_BUCKET_LABELS[group.bucket].title}</h4>
                   </div>
-                  <p className="max-w-2xl text-sm text-slate-400">{SOURCE_BUCKET_LABELS[group.bucket].description}</p>
+                  <p className="max-w-2xl text-sm leading-relaxed text-slate-400">{SOURCE_BUCKET_LABELS[group.bucket].description}</p>
                 </div>
 
                 <div className="grid gap-4">
                   {group.items.map((item) => (
                     <article
                       key={item.id}
-                      className="group relative overflow-hidden rounded-[1.75rem] border border-slate-800/90 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.92))] p-5 transition hover:border-cyan-400/40 hover:shadow-[0_22px_60px_rgba(14,165,233,0.12)]"
+                      className="group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.92))] p-5 transition hover:border-cyan-400/40 hover:shadow-[0_14px_40px_rgba(14,165,233,0.1)]"
                     >
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.07),transparent_30%)] opacity-0 transition group-hover:opacity-100" />
                       <div className="relative">
@@ -621,6 +626,7 @@ export default function DashboardOpportunitiesPage() {
             ))}
           </div>
         )}
+        </div>
       </section>
     </div>
   )

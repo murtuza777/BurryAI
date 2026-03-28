@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { HolographicCard, HolographicButton } from '@/components/dashboard/HolographicUI'
 import { Line } from 'react-chartjs-2'
+import '@/lib/chartjs-register'
 import { Calendar, DollarSign, TrendingUp, Clock, AlertCircle } from 'lucide-react'
 import { format, addMonths } from 'date-fns'
 

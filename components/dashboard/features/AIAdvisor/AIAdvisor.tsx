@@ -1,17 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  Bot,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign,
   Info,
   Loader2,
   MessageSquarePlus,
   Search,
+  Sparkles,
   Trash2
 } from "lucide-react"
 
 import { getAgentAdvice, type AgentAdviceResponse } from "@/lib/financial-client"
 import { ChatInput, ChatInputSubmit, ChatInputTextArea } from "@/components/ui/chat-input"
+
+function AdvisorBrandMark() {
+  return (
+    <div
+      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 via-slate-900/45 to-cyan-500/15 shadow-[inset_0_1px_0_rgba(52,211,153,0.12)]"
+      aria-hidden
+    >
+      <CircleDollarSign className="h-[21px] w-[21px] text-emerald-200" strokeWidth={1.85} />
+      <Sparkles className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.35)]" strokeWidth={2.25} />
+    </div>
+  )
+}
 
 type MessageMeta = {
   intent: AgentAdviceResponse["intent"]
@@ -679,9 +692,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
       >
         <div className="flex flex-col gap-3 border-b border-slate-800 bg-slate-950/70 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/15">
-              <Bot className="h-5 w-5 text-cyan-300" />
-            </div>
+            <AdvisorBrandMark />
             <div className="min-w-0">
               <h3 className="font-semibold text-slate-100">BurryAI Advisor</h3>
               <p className="text-xs text-slate-400 sm:text-sm">

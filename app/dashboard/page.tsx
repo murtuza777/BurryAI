@@ -3,18 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CreditCard, PieChart, TrendingUp, Trash2, Wallet } from 'lucide-react'
 import { Doughnut, Line } from 'react-chartjs-2'
-import {
-  ArcElement,
-  BarElement,
-  CategoryScale,
-  Chart as ChartJS,
-  Filler,
-  Legend,
-  LineElement,
-  LinearScale,
-  PointElement,
-  Tooltip
-} from 'chart.js'
+import '@/lib/chartjs-register'
 
 import { HolographicCard } from '@/components/dashboard/HolographicUI'
 import FinanceLoader from '@/components/ui/FinanceLoader'
@@ -31,18 +20,6 @@ import {
   type FinancialSummary,
   type LoanItem
 } from '@/lib/financial-client'
-
-ChartJS.register(
-  ArcElement,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Tooltip,
-  Legend,
-  Filler
-)
 
 const DEFAULT_SUMMARY: FinancialSummary = {
   total_income: 0,

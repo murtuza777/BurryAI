@@ -2,9 +2,10 @@ import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { HolographicCard } from '@/components/dashboard/HolographicUI'
 import {
-  AlertTriangle,
   ArrowRight,
   Brain,
+  ChevronDown,
+  ChevronUp,
   Coffee,
   Home,
   Loader2,
@@ -20,7 +21,9 @@ import {
   Scissors
 } from 'lucide-react'
 import { Doughnut } from 'react-chartjs-2'
+import '@/lib/chartjs-register'
 import { getCostAnalysis, type CostAnalysisResponse } from '@/lib/financial-client'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { renderAssistantContent } from '@/components/dashboard/shared/render-assistant-content'
 
@@ -73,6 +76,7 @@ function formatCurrency(value: number): string {
 
 export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
   const router = useRouter()
+  const [showIntro, setShowIntro] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState<CostAnalysisResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -140,56 +144,63 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-slate-800 bg-[linear-gradient(135deg,rgba(249,115,22,0.12),transparent_40%),linear-gradient(180deg,rgba(10,15,28,0.98),rgba(8,12,22,0.96))] p-4 shadow-[0_24px_60px_rgba(3,7,18,0.45)] sm:p-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-300/80">Cost Cutter</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">Cut spending only from the categories you actually saved</h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-              This page uses your saved Profile spending setup only. No extra essential bucket, no fake comparison budget, just your income versus the categories you entered.
-            </p>
+      <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(2,6,23,0.76))] px-4 py-3 shadow-[0_14px_44px_rgba(2,6,23,0.38)]">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            {isGuest ? (
+              <p className="text-sm text-slate-300">Sign in to run AI analysis on your saved spending.</p>
+            ) : canAnalyze ? (
+              <>
+                <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">{formatCurrency(monthlyIncome)} income</Badge>
+                <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">
+                  {categories.length} {categories.length === 1 ? 'category' : 'categories'}
+                </Badge>
+                <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">{formatCurrency(totalExpenses)} spend</Badge>
+                <Badge className="border-emerald-400/30 bg-emerald-500/10 text-emerald-100">{formatCurrency(unassignedIncome)} left</Badge>
+              </>
+            ) : (
+              <p className="text-sm text-slate-300">
+                Add income and categories in <span className="text-slate-100">Profile</span> to analyze.
+              </p>
+            )}
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push('/dashboard/profile')}
-              className="w-full border-slate-700 bg-slate-950/70 hover:bg-slate-900 sm:w-auto"
+              onClick={() => setShowIntro((prev) => !prev)}
+              className="h-8 rounded-full border-slate-700 bg-slate-900/70 px-3 text-xs text-slate-100 hover:bg-slate-800"
             >
-              <PencilLine className="mr-2 h-4 w-4" />
-              Edit profile spending
+              {showIntro ? 'Hide' : 'How it works'}
+              {showIntro ? <ChevronUp className="ml-1.5 h-3.5 w-3.5" /> : <ChevronDown className="ml-1.5 h-3.5 w-3.5" />}
             </Button>
             <Button
               type="button"
-              onClick={() => void loadAnalysis()}
-              disabled={!canAnalyze || loading}
-              className="w-full bg-orange-300 text-slate-950 hover:bg-orange-200 disabled:bg-slate-700 disabled:text-slate-300 sm:w-auto"
+              onClick={() => router.push('/dashboard/profile')}
+              className="h-8 rounded-full border border-cyan-300/60 bg-cyan-300 px-3 text-xs font-semibold text-slate-950 hover:bg-cyan-200"
             >
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
-              Analyze with AI
+              <PencilLine className="mr-1.5 h-3.5 w-3.5" />
+              Profile details
             </Button>
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Monthly income</p>
-            <p className="mt-3 text-2xl font-semibold text-white">{hasIncome ? formatCurrency(monthlyIncome) : 'Missing'}</p>
+        {showIntro ? (
+          <div className="mt-3 rounded-2xl border border-slate-800/80 bg-slate-950/55 px-4 py-3 text-sm text-slate-300">
+            <p className="text-sm font-medium text-slate-100">How it works</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
+              <li>Uses the income and category amounts you saved in Profile.</li>
+              <li>Suggests where to trim based on those numbers—nothing extra is invented.</li>
+              <li>
+                Status:{' '}
+                <span className={canAnalyze ? 'text-emerald-200' : 'text-amber-200'}>
+                  {canAnalyze ? 'Ready to analyze' : 'Complete Profile first'}
+                </span>
+              </li>
+            </ul>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Saved categories</p>
-            <p className="mt-3 text-2xl font-semibold text-white">{categories.length}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Total planned spend</p>
-            <p className="mt-3 text-2xl font-semibold text-white">{formatCurrency(totalExpenses)}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Left from income</p>
-            <p className="mt-3 text-2xl font-semibold text-emerald-300">{formatCurrency(unassignedIncome)}</p>
-          </div>
-        </div>
+        ) : null}
       </section>
 
       {isGuest ? (
@@ -206,12 +217,23 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
-          <div className="border-b border-slate-800/70 px-5 py-4">
-            <div className="flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-orange-300" />
-              <h3 className="text-lg font-semibold text-white">Budget snapshot</h3>
+          <div className="flex flex-col gap-3 border-b border-slate-800/70 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 shrink-0 text-orange-300" />
+                <h3 className="text-lg font-semibold text-white">Budget snapshot</h3>
+              </div>
+              <p className="mt-1 text-sm text-slate-400">A simple view of the money you assigned in Profile.</p>
             </div>
-            <p className="mt-1 text-sm text-slate-400">A simple view of the money you assigned in Profile.</p>
+            <Button
+              type="button"
+              onClick={() => void loadAnalysis()}
+              disabled={!canAnalyze || loading}
+              className="h-9 shrink-0 self-start rounded-full border border-orange-300/70 bg-orange-300 px-4 text-xs font-semibold text-slate-950 hover:bg-orange-200 disabled:bg-slate-700 disabled:text-slate-500 sm:self-center"
+            >
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+              Analyze
+            </Button>
           </div>
           <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
