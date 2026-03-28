@@ -323,13 +323,16 @@ export function SignInCard({ onSignIn, onGuestLogin, error: externalError }: Sig
                     transition={{ type: "spring", duration: 0.8 }}
                     className="mx-auto w-12 h-12 rounded-full border border-cyan-400/20 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-cyan-500/10 to-blue-500/10"
                   >
-                    <Image 
-                      src="/burryai-owl.svg" 
-                      alt="BurryAI logo" 
-                      width={32} 
-                      height={32} 
-                      priority 
-                    />
+                    <div className="relative h-10 w-10 overflow-hidden rounded-full">
+                      <Image 
+                        src="/burryaiLogo.png" 
+                        alt="BurryAI logo" 
+                        fill
+                        sizes="40px"
+                        className="object-cover scale-[1.32]"
+                        priority 
+                      />
+                    </div>
                     {/* Inner lighting effect */}
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-300/10 to-transparent opacity-50" />
                   </motion.div>

@@ -5,6 +5,11 @@ import type { Metadata, Viewport } from 'next'
 export const metadata: Metadata = {
   title: 'BurryAI',
   description: 'AI-Powered Student Finance Management',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.ico'
+  }
 }
 
 export const viewport: Viewport = {
