@@ -76,7 +76,7 @@ export default function DashboardTimelinePage() {
   }
 
   return (
-    <div className="space-y-6 min-h-[calc(100vh-10rem)]">
+    <div className="space-y-6">
       {error ? (
         <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>
       ) : null}

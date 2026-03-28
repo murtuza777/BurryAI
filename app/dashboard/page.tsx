@@ -218,9 +218,9 @@ export default function DashboardOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-800/80 bg-slate-950/50 px-5 py-5">
+      <section className="rounded-2xl border border-slate-800/80 bg-slate-950/50 px-4 py-4 sm:px-5 sm:py-5">
         <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/80">Dashboard</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">Welcome, {displayName}</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">Welcome, {displayName}</h1>
       </section>
 
       {error ? (
@@ -233,7 +233,7 @@ export default function DashboardOverviewPage() {
             <Wallet className="h-4 w-4 text-cyan-300" />
             Total Income
           </p>
-          <p className="mt-2 text-4xl font-semibold">${summary.total_income.toLocaleString()}</p>
+          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">${summary.total_income.toLocaleString()}</p>
         </HolographicCard>
 
         <HolographicCard>
@@ -241,7 +241,7 @@ export default function DashboardOverviewPage() {
             <PieChart className="h-4 w-4 text-rose-300" />
             Total Expenses
           </p>
-          <p className="mt-2 text-4xl font-semibold">${summary.total_expenses.toLocaleString()}</p>
+          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">${summary.total_expenses.toLocaleString()}</p>
         </HolographicCard>
 
         <HolographicCard>
@@ -249,7 +249,7 @@ export default function DashboardOverviewPage() {
             <CreditCard className="h-4 w-4 text-amber-300" />
             Loan Payments
           </p>
-          <p className="mt-2 text-4xl font-semibold">${summary.monthly_loan_payments.toLocaleString()}</p>
+          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">${summary.monthly_loan_payments.toLocaleString()}</p>
         </HolographicCard>
 
         <HolographicCard>
@@ -257,7 +257,7 @@ export default function DashboardOverviewPage() {
             <TrendingUp className="h-4 w-4 text-emerald-300" />
             Health Score
           </p>
-          <p className="mt-2 text-4xl font-semibold">{dashboardScore.score}/100</p>
+          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">{dashboardScore.score}/100</p>
           <p className="mt-1 text-xs text-slate-300">Grade {dashboardScore.grade}</p>
         </HolographicCard>
       </div>
@@ -265,7 +265,7 @@ export default function DashboardOverviewPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <HolographicCard>
           <h3 className="mb-4 text-xl font-semibold">Monthly Cash Flow Mix</h3>
-          <div className="h-72">
+          <div className="h-64 sm:h-72">
             <Doughnut
               data={cashFlowChartData}
               options={{
@@ -282,7 +282,7 @@ export default function DashboardOverviewPage() {
 
         <HolographicCard>
           <h3 className="mb-4 text-xl font-semibold">6-Month Projection</h3>
-          <div className="h-72">
+          <div className="h-64 sm:h-72">
             <Line
               data={projectionChartData}
               options={{
@@ -326,12 +326,12 @@ export default function DashboardOverviewPage() {
                   <div className="min-w-0">
                     <p className="font-medium">{expense.category}</p>
                     <p className="text-sm text-slate-300">${expense.amount.toLocaleString()}</p>
-                    {expense.description ? <p className="truncate text-xs text-slate-500">{expense.description}</p> : null}
+                    {expense.description ? <p className="break-words text-xs text-slate-500">{expense.description}</p> : null}
                     <p className="text-xs text-slate-400">{expense.date}</p>
                   </div>
                   <button
                     onClick={() => void handleDeleteExpense(expense.id)}
-                    className="shrink-0 rounded-md p-1.5 text-slate-600 opacity-0 transition-colors group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-400"
+                    className="shrink-0 rounded-md p-1.5 text-slate-500 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
                     title="Delete expense"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -360,7 +360,7 @@ export default function DashboardOverviewPage() {
                   </div>
                   <button
                     onClick={() => void handleDeleteLoan(loan.id)}
-                    className="shrink-0 rounded-md p-1.5 text-slate-600 opacity-0 transition-colors group-hover:opacity-100 hover:bg-rose-500/10 hover:text-rose-400"
+                    className="shrink-0 rounded-md p-1.5 text-slate-500 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
                     title="Delete loan"
                   >
                     <Trash2 className="h-3.5 w-3.5" />

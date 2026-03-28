@@ -116,11 +116,11 @@ export function FinancialTimeline({ userData }: TimelineProps) {
 
       {/* Main Timeline Chart */}
       <HolographicCard>
-        <h3 className="text-xl font-semibold mb-4 flex items-center">
+        <h3 className="mb-4 flex items-center text-xl font-semibold">
           <Calendar className="w-6 h-6 text-cyan-500 mr-2" />
           Loan Repayment Timeline
         </h3>
-        <div className="h-[400px]">
+        <div className="h-[280px] sm:h-[400px]">
           <Line
             data={{
               labels: timelineData.map(d => `Month ${d.month}`),
@@ -174,7 +174,7 @@ export function FinancialTimeline({ userData }: TimelineProps) {
       </HolographicCard>
 
       {/* Timeline Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
         <HolographicCard>
           <div className="flex items-center justify-between">
             <div>
@@ -214,11 +214,11 @@ export function FinancialTimeline({ userData }: TimelineProps) {
 
       {/* Payment Impact Simulator */}
       <HolographicCard>
-        <h3 className="text-xl font-semibold mb-4 flex items-center">
+        <h3 className="mb-4 flex items-center text-xl font-semibold">
           <AlertCircle className="w-6 h-6 text-cyan-500 mr-2" />
           Payment Impact Simulator
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="space-y-4">
             <h4 className="font-semibold">Standard Payment Plan</h4>
             <p className="text-slate-300">Monthly Payment: ${monthlyPayment.toLocaleString()}</p>

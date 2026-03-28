@@ -140,22 +140,22 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-slate-800 bg-[linear-gradient(135deg,rgba(249,115,22,0.12),transparent_40%),linear-gradient(180deg,rgba(10,15,28,0.98),rgba(8,12,22,0.96))] p-6 shadow-[0_24px_60px_rgba(3,7,18,0.45)]">
+      <section className="overflow-hidden rounded-[28px] border border-slate-800 bg-[linear-gradient(135deg,rgba(249,115,22,0.12),transparent_40%),linear-gradient(180deg,rgba(10,15,28,0.98),rgba(8,12,22,0.96))] p-4 shadow-[0_24px_60px_rgba(3,7,18,0.45)] sm:p-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-300/80">Cost Cutter</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Cut spending only from the categories you actually saved</h1>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">Cut spending only from the categories you actually saved</h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
               This page uses your saved Profile spending setup only. No extra essential bucket, no fake comparison budget, just your income versus the categories you entered.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.push('/dashboard/profile')}
-              className="border-slate-700 bg-slate-950/70 hover:bg-slate-900"
+              className="w-full border-slate-700 bg-slate-950/70 hover:bg-slate-900 sm:w-auto"
             >
               <PencilLine className="mr-2 h-4 w-4" />
               Edit profile spending
@@ -164,7 +164,7 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
               type="button"
               onClick={() => void loadAnalysis()}
               disabled={!canAnalyze || loading}
-              className="bg-orange-300 text-slate-950 hover:bg-orange-200 disabled:bg-slate-700 disabled:text-slate-300"
+              className="w-full bg-orange-300 text-slate-950 hover:bg-orange-200 disabled:bg-slate-700 disabled:text-slate-300 sm:w-auto"
             >
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
               Analyze with AI
@@ -172,7 +172,7 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Monthly income</p>
             <p className="mt-3 text-2xl font-semibold text-white">{hasIncome ? formatCurrency(monthlyIncome) : 'Missing'}</p>
@@ -213,7 +213,7 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
             </div>
             <p className="mt-1 text-sm text-slate-400">A simple view of the money you assigned in Profile.</p>
           </div>
-          <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
                 <Target className="h-4 w-4 text-orange-300" />
@@ -281,7 +281,7 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
             <h3 className="text-lg font-semibold text-white">Where your money goes</h3>
             <p className="mt-1 text-sm text-slate-400">Only the categories saved in Profile are shown here.</p>
           </div>
-          <div className="p-5 h-[340px]">
+          <div className="h-[280px] p-5 sm:h-[340px]">
             {expenseCategories.length > 0 ? (
               <Doughnut
                 data={chartData}
