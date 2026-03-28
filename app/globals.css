@@ -67,13 +67,18 @@
 }
  
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
   }
-} 
+}
 
 /* Add custom scrollbar styling */
 .custom-scrollbar::-webkit-scrollbar {
