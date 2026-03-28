@@ -3,7 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, ChevronDown, LogOut, Search, User } from 'lucide-react'
+import {
+  Bell,
+  Bot,
+  Briefcase,
+  CalendarRange,
+  ChevronDown,
+  Home,
+  LogOut,
+  Scissors,
+  Search,
+  User
+} from 'lucide-react'
 
 import { BrandIdentity } from '@/components/BrandIdentity'
 import { Button } from '@/components/ui/button'
@@ -12,11 +23,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getFinancialProfile } from '@/lib/financial-client'
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Overview' },
-  { href: '/dashboard/advisor', label: 'AI Advisor' },
-  { href: '/dashboard/opportunities', label: 'Opportunities' },
-  { href: '/dashboard/cost-cutter', label: 'Cost Cutter' },
-  { href: '/dashboard/timeline', label: 'Timeline' }
+  { href: '/dashboard', label: 'Overview', shortLabel: 'Home', icon: Home },
+  { href: '/dashboard/advisor', label: 'AI Advisor', shortLabel: 'Advisor', icon: Bot },
+  { href: '/dashboard/opportunities', label: 'Opportunities', shortLabel: 'Jobs', icon: Briefcase },
+  { href: '/dashboard/cost-cutter', label: 'Cost Cutter', shortLabel: 'Cuts', icon: Scissors },
+  { href: '/dashboard/timeline', label: 'Timeline', shortLabel: 'Plan', icon: CalendarRange }
 ]
 
 function isActiveNav(pathname: string, href: string): boolean {
@@ -74,6 +85,11 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
     return 'Guest'
   }, [guestUser?.name, user?.email])
 
+  const activeNavItem = useMemo(
+    () => NAV_ITEMS.find((item) => isActiveNav(pathname, item.href)) ?? NAV_ITEMS[0],
+    [pathname]
+  )
+
   const profileInitial = useMemo(() => {
     const trimmed = identityLabel.trim()
     return trimmed.length ? trimmed[0].toUpperCase() : 'G'
@@ -104,46 +120,33 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_7%_0%,rgba(6,182,212,0.18),transparent_35%),radial-gradient(circle_at_92%_4%,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#010817_0%,#020617_100%)] text-white">
-      <div className="mx-auto w-full max-w-[1800px] px-3 py-5 sm:px-4 md:px-6 md:py-6 lg:px-8">
-        <header className="rounded-[2rem] border border-slate-800/90 bg-slate-950/70 px-4 py-3 shadow-[0_12px_42px_rgba(2,6,23,0.55)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 md:flex-nowrap">
-            <div className="shrink-0">
-              <BrandIdentity size={30} textClassName="text-xl font-semibold text-cyan-200" />
+    <div className="min-h-[100svh] bg-[radial-gradient(circle_at_7%_0%,rgba(6,182,212,0.18),transparent_35%),radial-gradient(circle_at_92%_4%,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#010817_0%,#020617_100%)] text-white">
+      <div className="mx-auto w-full max-w-[1800px] px-3 pb-28 pt-4 sm:px-4 sm:pb-32 md:px-6 md:pb-6 md:pt-6 lg:px-8">
+        <header className="sticky top-3 z-40 rounded-[1.75rem] border border-slate-800/90 bg-slate-950/75 px-3 py-3 shadow-[0_12px_42px_rgba(2,6,23,0.55)] backdrop-blur-xl sm:px-4 md:top-4 md:rounded-[2rem]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 shrink">
+              <BrandIdentity
+                size={28}
+                textClassName="text-lg font-semibold text-cyan-200 sm:text-xl"
+                className="min-w-0"
+              />
+              <div className="mt-2 md:hidden">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/75">Current feature</p>
+                <p className="mt-1 truncate text-sm font-medium text-slate-100">{activeNavItem.label}</p>
+              </div>
             </div>
 
-            <nav className="order-3 w-full rounded-full border border-slate-800 bg-slate-900/60 p-1.5 md:order-2 md:w-auto md:min-w-[620px]">
-              <div className="grid grid-cols-2 gap-1.5 md:grid-cols-5">
-                {NAV_ITEMS.map((item) => {
-                  const active = isActiveNav(pathname, item.href)
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`rounded-full px-3 py-2 text-center text-sm font-medium transition ${
-                        active
-                          ? 'bg-gradient-to-r from-cyan-500/30 to-sky-500/25 text-white shadow-[0_6px_24px_rgba(34,211,238,0.35)]'
-                          : 'text-slate-300 hover:bg-slate-800/80 hover:text-slate-100'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  )
-                })}
-              </div>
-            </nav>
-
-            <div className="order-2 flex items-center gap-2 md:order-3">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 text-slate-300 hover:text-cyan-200"
+                className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 text-slate-300 transition hover:text-cyan-200 sm:inline-flex"
                 title="Search"
               >
                 <Search className="h-4 w-4" />
               </button>
               <button
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 text-slate-300 hover:text-cyan-200"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 text-slate-300 transition hover:text-cyan-200"
                 title="Notifications"
               >
                 <Bell className="h-4 w-4" />
@@ -161,7 +164,7 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
                     {profileInitial}
                   </span>
                   <ChevronDown
-                    className={`h-4 w-4 text-slate-300 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`}
+                    className={`hidden h-4 w-4 text-slate-300 transition-transform sm:block ${isProfileMenuOpen ? 'rotate-180' : ''}`}
                   />
                 </button>
 
@@ -195,9 +198,30 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
+
+          <nav className="mt-3 hidden rounded-full border border-slate-800 bg-slate-900/60 p-1.5 md:block">
+              <div className="grid grid-cols-2 gap-1.5 md:grid-cols-5">
+                {NAV_ITEMS.map((item) => {
+                  const active = isActiveNav(pathname, item.href)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`rounded-full px-3 py-2 text-center text-sm font-medium transition ${
+                        active
+                          ? 'bg-gradient-to-r from-cyan-500/30 to-sky-500/25 text-white shadow-[0_6px_24px_rgba(34,211,238,0.35)]'
+                          : 'text-slate-300 hover:bg-slate-800/80 hover:text-slate-100'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
+          </nav>
         </header>
 
-        <main className="mt-5 min-h-[calc(100vh-8.5rem)]">
+        <main className="mt-4 min-h-[calc(100svh-8rem)] pb-2 md:mt-5 md:pb-0">
           {isGuest ? (
             <div className="mb-4 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-amber-100">
               Guest mode is active. Sign up to save real financial data and analytics.
@@ -205,6 +229,30 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
           ) : null}
           {children}
         </main>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:hidden">
+        <nav className="mx-auto flex max-w-xl items-end justify-between gap-1 rounded-[1.75rem] border border-slate-700/80 bg-slate-950/90 px-2 py-2 shadow-[0_18px_45px_rgba(2,6,23,0.72)] backdrop-blur-xl">
+          {NAV_ITEMS.map((item) => {
+            const active = isActiveNav(pathname, item.href)
+            const Icon = item.icon
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[1.2rem] px-2 py-2 text-[11px] font-medium transition ${
+                  active
+                    ? 'bg-gradient-to-b from-cyan-400/25 to-sky-500/20 text-white shadow-[0_10px_28px_rgba(34,211,238,0.22)]'
+                    : 'text-slate-400 hover:bg-slate-900 hover:text-slate-100'
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${active ? 'text-cyan-200' : 'text-slate-500'}`} />
+                <span className="truncate">{item.shortLabel}</span>
+              </Link>
+            )
+          })}
+        </nav>
       </div>
     </div>
   )
