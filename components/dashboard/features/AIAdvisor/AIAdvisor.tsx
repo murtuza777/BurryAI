@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Bot, ChevronLeft, ChevronRight, Info, Loader2, MessageSquarePlus, Search, Trash2 } from "lucide-react"
+import {
+  Bot,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  Loader2,
+  MessageSquarePlus,
+  Search,
+  Trash2
+} from "lucide-react"
+
 import { getAgentAdvice, type AgentAdviceResponse } from "@/lib/financial-client"
 import { ChatInput, ChatInputSubmit, ChatInputTextArea } from "@/components/ui/chat-input"
 
@@ -43,6 +53,12 @@ type InlineToken =
   | { type: "text"; text: string }
   | { type: "bold"; text: string }
   | { type: "link"; text: string; href: string }
+
+type PersistedThread = Omit<ChatThread, "createdAt" | "updatedAt" | "messages"> & {
+  createdAt: string
+  updatedAt: string
+  messages: Array<Omit<Message, "timestamp"> & { timestamp: string }>
+}
 
 const CHAT_THREADS_STORAGE_PREFIX = "burryai:advisor:threads:v1"
 const ACTIVE_THREAD_STORAGE_PREFIX = "burryai:advisor:active-thread:v1"
@@ -157,7 +173,7 @@ function renderInline(text: string, keyPrefix: string): JSX.Element[] {
           href={token.href}
           target="_blank"
           rel="noreferrer"
-          className="text-cyan-300 underline decoration-cyan-500/50 underline-offset-2 break-all"
+          className="break-all text-cyan-300 underline decoration-cyan-500/50 underline-offset-2"
         >
           {token.text}
         </a>
@@ -218,9 +234,9 @@ function renderAssistantContent(text: string): JSX.Element[] {
       return
     }
 
-    if (/^[-*•]\s+/.test(line)) {
+    if (/^[-*]\s+/.test(line)) {
       flushNumbers(index)
-      bulletItems.push(line.replace(/^[-*•]\s+/, ""))
+      bulletItems.push(line.replace(/^[-*]\s+/, ""))
       return
     }
 
@@ -260,12 +276,6 @@ function formatThreadTime(date: Date): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" })
 }
 
-type PersistedThread = Omit<ChatThread, "createdAt" | "updatedAt" | "messages"> & {
-  createdAt: string
-  updatedAt: string
-  messages: Array<Omit<Message, "timestamp"> & { timestamp: string }>
-}
-
 function toPersistedThreads(threads: ChatThread[]): PersistedThread[] {
   return threads.map((thread) => ({
     ...thread,
@@ -291,6 +301,53 @@ function fromPersistedThreads(raw: string): ChatThread[] {
       timestamp: new Date(message.timestamp)
     }))
   }))
+}
+
+function ThreadCard(props: {
+  active: boolean
+  thread: ChatThread
+  compact?: boolean
+  onOpen: () => void
+  onDelete: () => void
+}) {
+  const { active, thread, compact = false, onOpen, onDelete } = props
+
+  return (
+    <div
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className={`rounded-2xl border px-3 py-3 text-left transition ${
+        compact ? "min-w-[210px] shrink-0" : "w-full"
+      } ${
+        active ? "border-cyan-400/60 bg-cyan-500/10" : "border-slate-800 bg-slate-900/70 hover:border-slate-700"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="line-clamp-2 text-xs font-medium text-slate-100">{thread.title}</p>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onDelete()
+          }}
+          className="rounded p-1 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300"
+          title="Delete chat"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <p className="mt-2 text-[11px] text-slate-500">
+        {thread.messages.length} messages | {formatThreadTime(thread.updatedAt)}
+      </p>
+    </div>
+  )
 }
 
 export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "default" }: AIAdvisorProps) {
@@ -321,6 +378,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
 
   const activeMessages = activeThread?.messages ?? []
   const isLoading = loadingThreadId === activeThread?.id
+  const isFullscreen = layout === "fullscreen"
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -364,7 +422,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         }
       }
     } catch {
-      // ignore malformed cache and regenerate below
+      // Ignore malformed cache and regenerate below.
     }
 
     const initial = createThread()
@@ -384,9 +442,11 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
       setAgentStep(0)
       return
     }
+
     const id = window.setInterval(() => {
       setAgentStep((step) => (step + 1) % AGENT_STEPS.length)
     }, 1200)
+
     return () => window.clearInterval(id)
   }, [isLoading])
 
@@ -497,8 +557,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         title: existingTitle
       }))
     } catch (error) {
-      const messageText =
-        error instanceof Error ? error.message : "Unable to generate advice now."
+      const messageText = error instanceof Error ? error.message : "Unable to generate advice now."
 
       updateThreadMessages(currentThreadId, (messages, existingTitle) => ({
         messages: [
@@ -519,8 +578,6 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     }
   }
 
-  const isFullscreen = layout === "fullscreen"
-
   return (
     <div
       className={
@@ -532,7 +589,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
       }
     >
       {isFullscreen && sidebarOpen ? (
-        <aside className="min-h-0 rounded-2xl border border-slate-800 bg-slate-950/80 p-3">
+        <aside className="hidden min-h-0 rounded-2xl border border-slate-800 bg-slate-950/80 p-3 lg:block">
           <button
             type="button"
             onClick={createNewThread}
@@ -542,58 +599,30 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
             New Chat
           </button>
 
-          <div className="max-h-[calc(100vh-13rem)] space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-[calc(100svh-13rem)] space-y-2 overflow-y-auto pr-1">
             {sortedThreads.map((thread) => (
-              <div
+              <ThreadCard
                 key={thread.id}
-                onClick={() => setActiveThreadId(thread.id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    setActiveThreadId(thread.id)
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                className={`w-full rounded-xl border px-3 py-2 text-left transition ${
-                  activeThread?.id === thread.id
-                    ? "border-cyan-400/60 bg-cyan-500/10"
-                    : "border-slate-800 bg-slate-900/70 hover:border-slate-700"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="line-clamp-2 text-xs font-medium text-slate-100">{thread.title}</p>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      deleteThread(thread.id)
-                    }}
-                    className="rounded p-1 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300"
-                    title="Delete chat"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <p className="mt-2 text-[11px] text-slate-500">
-                  {thread.messages.length} messages • {formatThreadTime(thread.updatedAt)}
-                </p>
-              </div>
+                active={activeThread?.id === thread.id}
+                thread={thread}
+                onOpen={() => setActiveThreadId(thread.id)}
+                onDelete={() => deleteThread(thread.id)}
+              />
             ))}
           </div>
         </aside>
       ) : !isFullscreen ? (
-        <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2">
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={createNewThread}
-            className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20 sm:w-auto"
           >
             <MessageSquarePlus className="h-3.5 w-3.5" />
             New Chat
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
             <label htmlFor="chat-thread-select" className="text-xs text-slate-400">
               Chats
             </label>
@@ -601,7 +630,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
               id="chat-thread-select"
               value={activeThread?.id ?? ""}
               onChange={(event) => setActiveThreadId(event.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+              className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-200 sm:flex-none"
             >
               {sortedThreads.map((thread) => (
                 <option key={thread.id} value={thread.id}>
@@ -613,31 +642,61 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         </div>
       ) : null}
 
+      {isFullscreen ? (
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/75 p-3 lg:hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={createNewThread}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 sm:w-auto"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              New Chat
+            </button>
+
+            <div className="text-xs text-slate-400">{sortedThreads.length} saved chats</div>
+          </div>
+
+          <div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
+            {sortedThreads.map((thread) => (
+              <ThreadCard
+                key={thread.id}
+                active={activeThread?.id === thread.id}
+                thread={thread}
+                compact
+                onOpen={() => setActiveThreadId(thread.id)}
+                onDelete={() => deleteThread(thread.id)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div
-        className={`min-h-0 rounded-2xl border border-slate-800 bg-[#020617]/95 shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
-          isFullscreen ? "h-full" : "h-[calc(100vh-11rem)] min-h-[620px]"
-        } flex flex-col overflow-hidden`}
+        className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#020617]/95 shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
+          isFullscreen ? "h-full min-h-[calc(100svh-15rem)]" : "min-h-[32rem] sm:min-h-[38rem] lg:h-[calc(100svh-11rem)]"
+        }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/70 px-5 py-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 border-b border-slate-800 bg-slate-950/70 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/15">
               <Bot className="h-5 w-5 text-cyan-300" />
             </div>
-            <div>
-              <h3 className="text-slate-100 font-semibold">BurryAI Advisor</h3>
-              <p className="text-xs text-slate-400">
-                Monthly income ${userData.monthlyIncome.toLocaleString()} • Expenses $
+            <div className="min-w-0">
+              <h3 className="font-semibold text-slate-100">BurryAI Advisor</h3>
+              <p className="text-xs text-slate-400 sm:text-sm">
+                Monthly income ${userData.monthlyIncome.toLocaleString()} | Expenses $
                 {userData.monthlyExpenses.toLocaleString()}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isFullscreen ? (
               <button
                 type="button"
                 onClick={() => setSidebarOpen((open) => !open)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
+                className="hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800 lg:inline-flex"
                 title={sidebarOpen ? "Hide chat sidebar" : "Show chat sidebar"}
                 aria-label={sidebarOpen ? "Hide chat sidebar" : "Show chat sidebar"}
               >
@@ -647,7 +706,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
             <button
               type="button"
               onClick={clearCurrentChat}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 sm:w-auto"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Clear Chat
@@ -656,22 +715,22 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         </div>
 
         {isLoading ? (
-          <div className="flex items-center gap-2 border-b border-slate-800 bg-slate-950/60 px-5 py-2 text-xs text-cyan-200">
+          <div className="flex items-center gap-2 border-b border-slate-800 bg-slate-950/60 px-4 py-2 text-xs text-cyan-200 sm:px-5">
             <Search className="h-3.5 w-3.5 animate-pulse" />
             {AGENT_STEPS[agentStep]}
           </div>
         ) : null}
 
-        <div className="hide-scrollbar flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+        <div className="hide-scrollbar flex-1 min-h-0 space-y-4 overflow-y-auto p-3 sm:p-5">
           {activeMessages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
             >
               <div
-                className={`max-w-[88%] rounded-2xl px-4 py-3 ${
+                className={`max-w-[92%] rounded-2xl px-4 py-3 sm:max-w-[88%] ${
                   message.role === "assistant"
-                    ? "bg-slate-900 border border-slate-800 text-slate-100"
+                    ? "border border-slate-800 bg-slate-900 text-slate-100"
                     : "bg-gradient-to-br from-cyan-400 to-cyan-300 text-slate-950"
                 }`}
               >
@@ -689,12 +748,12 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
                       </button>
                     ) : null}
 
-                    <div className={message.meta ? "pr-8 space-y-1" : "space-y-1"}>
+                    <div className={message.meta ? "space-y-1 pr-8" : "space-y-1"}>
                       {renderAssistantContent(message.content)}
                     </div>
 
                     {openTraceId === message.id && message.meta ? (
-                      <div className="mt-3 rounded-xl border border-cyan-500/20 bg-slate-950/70 p-3 text-xs text-slate-300 space-y-2">
+                      <div className="mt-3 space-y-2 rounded-xl border border-cyan-500/20 bg-slate-950/70 p-3 text-xs text-slate-300">
                         <p>
                           <span className="text-slate-400">Intent:</span> {message.meta.intent}
                         </p>
@@ -740,7 +799,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
                                   href={source.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-cyan-300 underline decoration-cyan-500/50 underline-offset-2 break-all"
+                                  className="break-all text-cyan-300 underline decoration-cyan-500/50 underline-offset-2"
                                 >
                                   {source.title || source.url}
                                 </a>{" "}
@@ -753,7 +812,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
                     ) : null}
                   </div>
                 ) : (
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
                 )}
 
                 <p className="mt-2 text-[11px] opacity-70">
@@ -777,13 +836,13 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
 
         {activeMessages.length <= 2 ? (
           <div className="border-t border-slate-800 bg-slate-950/80 px-4 py-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
               {QUICK_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => void sendMessage(prompt)}
                   disabled={isLoading}
-                  className="rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/15 disabled:opacity-40"
+                  className="shrink-0 rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/15 disabled:opacity-40"
                 >
                   {prompt}
                 </button>
@@ -792,7 +851,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
           </div>
         ) : null}
 
-        <div className="border-t border-slate-800 bg-slate-950/90 p-4">
+        <div className="border-t border-slate-800 bg-slate-950/90 p-3 sm:p-4">
           <ChatInput
             value={inputMessage}
             onChange={(event) => setInputMessage(event.target.value)}

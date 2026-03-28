@@ -55,12 +55,12 @@ export default function DashboardAdvisorPage() {
   }
 
   return (
-    <div className="space-y-4 min-h-[calc(100vh-10rem)]">
+    <div className="space-y-4">
       {error ? (
         <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>
       ) : null}
 
-      <div className="h-[calc(100vh-11.5rem)] min-h-[560px]">
+      <div className="min-h-[calc(100svh-14rem)]">
         <AIAdvisor
           userData={advisorData}
           layout="fullscreen"
