@@ -110,7 +110,7 @@ export default function LandingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+    <div className="min-h-[100svh] overflow-x-hidden bg-black text-white">
       <style jsx global>{`
         ::-webkit-scrollbar {
           display: none;
@@ -127,18 +127,18 @@ export default function LandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled ? 'bg-black/80 backdrop-blur-lg' : ''
       }`}>
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <BrandIdentity size={36} textClassName="text-2xl font-bold text-cyan-400" />
+        <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-4">
+          <BrandIdentity size={32} textClassName="text-lg font-bold text-cyan-400 sm:text-2xl" />
           <HolographicButton
             onClick={() => router.push('/login')}
-            className="min-w-[150px] rounded-xl px-5 py-2.5 bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-50 border-cyan-300/80 shadow-[0_10px_30px_rgba(34,211,238,0.55)] hover:brightness-110 hover:text-slate-50"
+            className="min-w-[120px] rounded-xl border-cyan-300/80 bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 px-4 py-2 text-slate-50 shadow-[0_10px_30px_rgba(34,211,238,0.55)] hover:brightness-110 hover:text-slate-50 sm:min-w-[150px] sm:px-5 sm:py-2.5"
           >
             Sign in
           </HolographicButton>
         </div>
       </nav>
 
-      <section className="relative min-h-screen flex items-center justify-center px-4">
+      <section className="relative flex min-h-[100svh] items-center justify-center px-4 pt-20">
         <div className="container mx-auto flex justify-center">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -146,24 +146,25 @@ export default function LandingPage() {
             transition={{ duration: 0.8 }}
             className="max-w-4xl text-center"
           >
-            <h1 className="text-5xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent">
+            <h1 className="mb-6 bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-4xl font-bold text-transparent sm:text-5xl lg:text-7xl">
               AI Financial Advisor For Students
             </h1>
-            <p className="text-xl text-gray-300 mb-8">
+            <p className="mb-8 text-base text-gray-300 sm:text-xl">
               BurryAI combines financial analytics, agentic AI, and real data to help you optimize spending,
               reduce debt risk, and build better money habits.
             </p>
-            <div className="flex flex-wrap gap-4 justify-center">
+            <div className="flex flex-col justify-center gap-4 sm:flex-row sm:flex-wrap">
               <HolographicButton
                 onClick={() => router.push('/login')}
                 icon={Rocket}
-                className="bg-cyan-500 text-slate-50 hover:bg-cyan-400 hover:text-slate-50"
+                className="w-full bg-cyan-500 text-slate-50 hover:bg-cyan-400 hover:text-slate-50 sm:w-auto"
               >
                 Get Started
               </HolographicButton>
               <HolographicButton
                 onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
                 icon={Shield}
+                className="w-full sm:w-auto"
               >
                 Learn More
               </HolographicButton>
@@ -182,7 +183,7 @@ export default function LandingPage() {
           >
             Core Features
           </motion.h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}
@@ -208,7 +209,7 @@ export default function LandingPage() {
       <section className="relative py-20 px-4">
         <div className="container mx-auto">
           <h2 className="text-3xl lg:text-5xl font-bold text-center mb-12 text-cyan-300">How It Works</h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid gap-6 md:grid-cols-3">
             {howItWorks.map((item, idx) => (
               <motion.div
                 key={item.title}
@@ -230,7 +231,7 @@ export default function LandingPage() {
       <section className="relative py-20 px-4 bg-gradient-to-b from-black to-black/50">
         <div className="container mx-auto">
           <h2 className="text-3xl lg:text-5xl font-bold text-center mb-10 text-cyan-300">Student Outcomes</h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid gap-6 md:grid-cols-3">
             {outcomes.map((item) => (
               <HolographicCard key={item.label} className="p-6 text-center">
                 <p className="text-4xl font-bold text-cyan-400 mb-2">{item.value}</p>
@@ -244,7 +245,7 @@ export default function LandingPage() {
       <section className="relative py-20 px-4">
         <div className="container mx-auto">
           <h2 className="text-3xl lg:text-5xl font-bold text-center mb-12 text-cyan-300">What Students Say</h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid gap-6 md:grid-cols-3">
             <HolographicCard className="p-6">
               <p className="text-gray-200 mb-4">"This finally showed me where my money was leaking every month."</p>
               <p className="text-cyan-400 font-medium">Ayesha, Computer Science</p>
@@ -277,14 +278,14 @@ export default function LandingPage() {
 
       <section className="relative py-20 px-4">
         <div className="container mx-auto max-w-5xl">
-          <HolographicCard className="p-8 text-center border-cyan-400/50">
-            <h2 className="text-3xl lg:text-5xl font-bold text-cyan-300 mb-4">Ready To Build Financial Clarity?</h2>
-            <p className="text-gray-300 mb-8">
+          <HolographicCard className="border-cyan-400/50 p-6 text-center sm:p-8">
+            <h2 className="mb-4 text-3xl font-bold text-cyan-300 lg:text-5xl">Ready To Build Financial Clarity?</h2>
+            <p className="mb-8 text-gray-300">
               Start with one account, one dashboard, and one plan that actually matches your student life.
             </p>
             <HolographicButton
               onClick={() => router.push('/login')}
-              className="bg-cyan-500 text-slate-50 hover:bg-cyan-400 hover:text-slate-50 px-8 py-3"
+              className="w-full bg-cyan-500 px-8 py-3 text-slate-50 hover:bg-cyan-400 hover:text-slate-50 sm:w-auto"
               icon={Rocket}
             >
               Sign in

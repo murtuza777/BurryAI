@@ -74,7 +74,7 @@ export function SignInCard({ onSignIn, onGuestLogin, error: externalError }: Sig
   const displayError = externalError || error;
 
   return (
-    <div className="min-h-screen w-screen bg-black relative overflow-hidden flex items-center justify-center">
+    <div className="relative flex min-h-[100svh] w-full items-center justify-center overflow-hidden bg-black px-4 py-8 sm:px-6">
       {/* Background gradient effect - BurryAI cyan theme */}
       <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/40 via-cyan-700/50 to-black" />
       
@@ -122,7 +122,7 @@ export function SignInCard({ onSignIn, onGuestLogin, error: externalError }: Sig
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="w-full max-w-sm relative z-10"
+        className="relative z-10 w-full max-w-sm"
         style={{ perspective: 1500 }}
       >
         <motion.div
@@ -306,7 +306,7 @@ export function SignInCard({ onSignIn, onGuestLogin, error: externalError }: Sig
               <div className="absolute -inset-[0.5px] rounded-2xl bg-gradient-to-r from-white/3 via-white/7 to-white/3 opacity-0 group-hover:opacity-70 transition-opacity duration-500" />
               
               {/* Glass card background */}
-              <div className="relative bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/[0.05] shadow-2xl overflow-hidden">
+              <div className="relative overflow-hidden rounded-2xl border border-white/[0.05] bg-black/40 p-5 shadow-2xl backdrop-blur-xl sm:p-6">
                 {/* Subtle card inner patterns */}
                 <div className="absolute inset-0 opacity-[0.03]" 
                   style={{

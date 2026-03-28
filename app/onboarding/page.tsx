@@ -150,7 +150,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,#0f766e26,transparent_45%),radial-gradient(circle_at_80%_0%,#1d4ed826,transparent_35%),linear-gradient(#020617,#020617)] text-slate-100 px-4 py-10">
+    <div className="min-h-[100svh] bg-[radial-gradient(circle_at_20%_20%,#0f766e26,transparent_45%),radial-gradient(circle_at_80%_0%,#1d4ed826,transparent_35%),linear-gradient(#020617,#020617)] px-4 py-6 text-slate-100 sm:py-10">
       <div className="mx-auto w-full max-w-4xl rounded-2xl border border-cyan-500/25 bg-slate-900/70 backdrop-blur p-6 md:p-8 shadow-[0_22px_80px_rgba(6,182,212,0.2)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -345,18 +345,18 @@ export default function OnboardingPage() {
             <p className="md:col-span-2 text-sm text-rose-400">{error}</p>
           ) : null}
 
-          <div className="md:col-span-2 flex justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse gap-3 pt-2 md:col-span-2 md:flex-row md:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.push('/dashboard')}
-              className="border-slate-700 bg-slate-900/85 hover:bg-slate-800"
+              className="w-full border-slate-700 bg-slate-900/85 hover:bg-slate-800 md:w-auto"
             >
               Skip for now
             </Button>
             <Button
               type="submit"
-              className="bg-gradient-to-r from-cyan-300 via-cyan-400 to-teal-300 hover:brightness-105 text-slate-950 font-semibold"
+              className="w-full bg-gradient-to-r from-cyan-300 via-cyan-400 to-teal-300 font-semibold text-slate-950 hover:brightness-105 md:w-auto"
               disabled={saving}
             >
               {saving ? 'Saving profile...' : 'Complete onboarding'}
