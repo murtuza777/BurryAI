@@ -261,7 +261,7 @@ export default function DashboardOpportunitiesPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-10rem)] space-y-5">
+    <div className="space-y-5">
       {isGuest ? (
         <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           Guest mode cannot fetch live opportunities. Sign up to unlock saved filters and job matches.
@@ -300,7 +300,7 @@ export default function DashboardOpportunitiesPage() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
             <Button
               type="button"
               variant="outline"
@@ -478,11 +478,11 @@ export default function DashboardOpportunitiesPage() {
         ) : null}
       </section>
 
-      <section className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/60 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.38)]">
+      <section className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/60 p-4 shadow-[0_20px_60px_rgba(2,6,23,0.38)] sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Results</p>
-            <h3 className="mt-1 text-2xl font-semibold text-slate-100">
+            <h3 className="mt-1 text-xl font-semibold text-slate-100 sm:text-2xl">
               {searchResult ? `${searchResult.opportunities.length} matched listings` : 'No search run yet'}
             </h3>
           </div>
@@ -533,7 +533,7 @@ export default function DashboardOpportunitiesPage() {
                     >
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.07),transparent_30%)] opacity-0 transition group-hover:opacity-100" />
                       <div className="relative">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                           <div className="max-w-3xl">
                             <div className="flex flex-wrap gap-2">
                               <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
@@ -582,7 +582,7 @@ export default function DashboardOpportunitiesPage() {
                             </div>
                           </div>
 
-                          <div className="text-right">
+                          <div className="text-left md:text-right">
                             <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Match Score</div>
                             <div className="mt-1 text-2xl font-semibold text-cyan-200">{item.score}</div>
                           </div>

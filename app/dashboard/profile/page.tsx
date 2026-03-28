@@ -327,9 +327,9 @@ export default function DashboardProfilePage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-10rem)]">
+    <div>
       <HolographicCard className="border-cyan-500/25">
-      <div className="rounded-xl border border-cyan-500/20 bg-black/20 p-6">
+      <div className="rounded-xl border border-cyan-500/20 bg-black/20 p-4 sm:p-6">
         {isGuest ? (
           <div className="mb-4 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             Guest mode cannot persist profile updates. Sign up to save profile data.
@@ -357,7 +357,7 @@ export default function DashboardProfilePage() {
           <Button
             variant="outline"
             onClick={() => router.push('/onboarding')}
-            className="border-slate-700 bg-slate-900/80 hover:bg-slate-800"
+            className="w-full border-slate-700 bg-slate-900/80 hover:bg-slate-800 sm:w-auto"
           >
             Re-run onboarding
           </Button>
@@ -576,7 +576,7 @@ export default function DashboardProfilePage() {
                 type="button"
                 variant="outline"
                 onClick={addSpendingRow}
-                className="border-slate-700 bg-slate-900/80 hover:bg-slate-800"
+                className="w-full border-slate-700 bg-slate-900/80 hover:bg-slate-800 sm:w-auto"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add other
@@ -682,11 +682,11 @@ export default function DashboardProfilePage() {
           </div>
         </div>
 
-        <div className="mt-7 flex justify-end">
+        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button
             onClick={() => void handleSaveProfile()}
             disabled={saving || isGuest}
-            className="rounded-xl border border-cyan-300/60 bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 shadow-[0_10px_30px_rgba(34,211,238,0.35)] hover:bg-cyan-300"
+            className="w-full rounded-xl border border-cyan-300/60 bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 shadow-[0_10px_30px_rgba(34,211,238,0.35)] hover:bg-cyan-300 sm:w-auto"
           >
             {saving ? 'Saving...' : 'Save profile and spending'}
           </Button>
