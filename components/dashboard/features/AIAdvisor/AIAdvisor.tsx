@@ -1,3 +1,4 @@
+import type React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
   ChevronLeft,
@@ -5,7 +6,6 @@ import {
   CircleDollarSign,
   Info,
   Loader2,
-  MoreHorizontal,
   MessageSquarePlus,
   Search,
   Sparkles,
@@ -18,11 +18,11 @@ import { ChatInput, ChatInputSubmit, ChatInputTextArea } from "@/components/ui/c
 function AdvisorBrandMark() {
   return (
     <div
-      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 via-slate-900/45 to-cyan-500/15 shadow-[inset_0_1px_0_rgba(52,211,153,0.12)]"
+      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 via-slate-900/45 to-cyan-500/15 shadow-[inset_0_1px_0_rgba(52,211,153,0.12)]"
       aria-hidden
     >
-      <CircleDollarSign className="h-[21px] w-[21px] text-emerald-200" strokeWidth={1.85} />
-      <Sparkles className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.35)]" strokeWidth={2.25} />
+      <CircleDollarSign className="h-[18px] w-[18px] text-emerald-200" strokeWidth={1.85} />
+      <Sparkles className="absolute -right-0.5 -top-0.5 h-3 w-3 text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.35)]" strokeWidth={2.25} />
     </div>
   )
 }
@@ -320,11 +320,10 @@ function fromPersistedThreads(raw: string): ChatThread[] {
 function ThreadCard(props: {
   active: boolean
   thread: ChatThread
-  compact?: boolean
   onOpen: () => void
   onDelete: () => void
 }) {
-  const { active, thread, compact = false, onOpen, onDelete } = props
+  const { active, thread, onOpen, onDelete } = props
 
   return (
     <div
@@ -337,30 +336,330 @@ function ThreadCard(props: {
       }}
       role="button"
       tabIndex={0}
-      className={`rounded-2xl border px-3 py-3 text-left transition ${
-        compact ? "min-w-[210px] shrink-0" : "w-full"
-      } ${
-        active ? "border-cyan-400/60 bg-cyan-500/10" : "border-slate-800 bg-slate-900/70 hover:border-slate-700"
+      className={`w-full rounded-[1.1rem] border px-2.5 py-2.5 text-left transition ${
+        active
+          ? "border-cyan-400/35 bg-cyan-500/10 shadow-[0_18px_40px_rgba(8,145,178,0.18)]"
+          : "border-slate-800/80 bg-slate-950/75 hover:border-slate-700 hover:bg-slate-900/90"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="line-clamp-2 text-xs font-medium text-slate-100">{thread.title}</p>
+        <p className="line-clamp-2 text-[11px] font-medium text-slate-100">{thread.title}</p>
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation()
             onDelete()
           }}
-          className="rounded p-1 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300"
+          className="rounded p-0.5 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300"
           title="Delete chat"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3 w-3" />
         </button>
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">
+      <p className="mt-1.5 text-[10px] text-slate-500">
         {thread.messages.length} messages | {formatThreadTime(thread.updatedAt)}
       </p>
     </div>
+  )
+}
+
+interface AdvisorSidebarProps {
+  activeThreadId: string | null
+  onClose?: () => void
+  onCreateThread: () => void
+  onDeleteThread: (threadId: string) => void
+  onOpenThread: (threadId: string) => void
+  sortedThreads: ChatThread[]
+  variant?: "desktop" | "mobile"
+}
+
+function AdvisorSidebar({
+  activeThreadId,
+  onClose,
+  onCreateThread,
+  onDeleteThread,
+  onOpenThread,
+  sortedThreads,
+  variant = "desktop"
+}: AdvisorSidebarProps) {
+  const isMobile = variant === "mobile"
+
+  return (
+    <aside
+      className={
+        isMobile
+          ? "flex h-full w-full max-w-[320px] flex-col border-r border-slate-800/80 bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.98))] shadow-[0_24px_80px_rgba(2,6,23,0.55)]"
+          : "hidden h-full min-h-0 flex-col rounded-[2rem] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.97))] shadow-[0_20px_60px_rgba(2,6,23,0.55)] lg:flex"
+      }
+    >
+      <div className={`border-b border-slate-800/80 ${isMobile ? "px-3 py-3" : "px-3 py-3"}`}>
+        {onClose ? (
+          <div className="mb-2 flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/85 text-slate-200 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
+              title="Close chats"
+              aria-label="Close chats"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={onCreateThread}
+          className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-500/15"
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" />
+          New Chat
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden px-2.5 pb-2.5 pt-2.5">
+        <div className="hide-scrollbar h-full space-y-2 overflow-y-auto pr-1">
+          {sortedThreads.map((thread) => (
+            <ThreadCard
+              key={thread.id}
+              active={activeThreadId === thread.id}
+              thread={thread}
+              onOpen={() => onOpenThread(thread.id)}
+              onDelete={() => onDeleteThread(thread.id)}
+            />
+          ))}
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+interface AdvisorConversationPanelProps {
+  activeMessages: Message[]
+  agentStep: number
+  chatEndRef: React.RefObject<HTMLDivElement>
+  hydrated: boolean
+  inputMessage: string
+  inputRef: React.RefObject<HTMLTextAreaElement>
+  isFullscreen: boolean
+  isLoading: boolean
+  onInputChange: (value: string) => void
+  onSendMessage: (text?: string) => void | Promise<void>
+  onToggleSidebar: () => void
+  openTraceId: string | null
+  sidebarOpen: boolean
+  setOpenTraceId: React.Dispatch<React.SetStateAction<string | null>>
+  showSidebarToggle: boolean
+  userData: AIAdvisorProps["userData"]
+}
+
+function AdvisorConversationPanel({
+  activeMessages,
+  agentStep,
+  chatEndRef,
+  hydrated,
+  inputMessage,
+  inputRef,
+  isFullscreen,
+  isLoading,
+  onInputChange,
+  onSendMessage,
+  onToggleSidebar,
+  openTraceId,
+  sidebarOpen,
+  setOpenTraceId,
+  showSidebarToggle,
+  userData
+}: AdvisorConversationPanelProps) {
+  return (
+    <section
+      className={`flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.97))] shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
+        isFullscreen ? "h-full" : "min-h-[32rem] sm:min-h-[38rem] lg:h-[calc(100svh-11rem)]"
+      }`}
+    >
+      <div className="shrink-0 border-b border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(15,23,42,0.58))] px-3 py-3 sm:px-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <AdvisorBrandMark />
+            <h3 className="truncate text-sm font-semibold text-slate-100 sm:text-base">BurryAI Advisor</h3>
+          </div>
+
+          {showSidebarToggle ? (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/85 text-slate-200 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
+              title={sidebarOpen ? "Hide chats" : "Show chats"}
+              aria-label={sidebarOpen ? "Hide chats" : "Show chats"}
+            >
+              {sidebarOpen ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="shrink-0 flex items-center gap-2 border-b border-slate-800 bg-slate-950/60 px-4 py-2 text-xs text-cyan-200 sm:px-5">
+          <Search className="h-3.5 w-3.5 animate-pulse" />
+          {AGENT_STEPS[agentStep]}
+        </div>
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="hide-scrollbar h-full overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.08),transparent_30%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.08),transparent_24%),linear-gradient(180deg,rgba(15,23,42,0.32),rgba(2,6,23,0.22))] p-4 sm:p-5">
+          <div className="space-y-4">
+            {activeMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
+              >
+                <div
+                  className={`max-w-[90%] px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.18)] sm:max-w-[84%] ${
+                    message.role === "assistant"
+                      ? "rounded-[1.6rem] rounded-bl-md border border-slate-800/60 bg-slate-900/92 text-slate-100"
+                      : "rounded-[1.6rem] rounded-br-md bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-white"
+                  }`}
+                >
+                  {message.role === "assistant" ? (
+                    <div className="relative">
+                      {message.meta ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpenTraceId((prev) => (prev === message.id ? null : message.id))}
+                          className="absolute right-0 top-0 inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-cyan-200"
+                          title="Show agent details"
+                          aria-label="Show agent details"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+
+                      <div className={message.meta ? "space-y-1 pr-8" : "space-y-1"}>
+                        {renderAssistantContent(message.content)}
+                      </div>
+
+                      {openTraceId === message.id && message.meta ? (
+                        <div className="mt-3 space-y-2 rounded-xl border border-cyan-500/20 bg-slate-950/70 p-3 text-xs text-slate-300">
+                          <p>
+                            <span className="text-slate-400">Intent:</span> {message.meta.intent}
+                          </p>
+                          <p>
+                            <span className="text-slate-400">Model:</span> {normalizeModelName(message.modelUsed)}
+                          </p>
+                          <p>
+                            <span className="text-slate-400">RAG:</span> {message.meta.rag.knowledge_count} knowledge chunks, {message.meta.rag.web_count} web results, search triggered: {message.meta.rag.web_search_triggered ? "yes" : "no"}
+                          </p>
+                          <p>
+                            <span className="text-slate-400">Tools:</span>{" "}
+                            {message.meta.usedTools.join(", ") || "none"}
+                          </p>
+
+                          {message.meta.toolSummaries.length > 0 ? (
+                            <div className="space-y-1">
+                              <p className="text-slate-400">Tool outputs:</p>
+                              {message.meta.toolSummaries.map((tool) => (
+                                <p key={`${message.id}-${tool.name}`}>
+                                  {tool.name}: {tool.summary}
+                                </p>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {message.meta.knowledgeSources.length > 0 ? (
+                            <div className="space-y-1">
+                              <p className="text-slate-400">Knowledge sources:</p>
+                              {message.meta.knowledgeSources.map((source, index) => (
+                                <p key={`${message.id}-k-${index}`}>
+                                  {source.title} ({source.source})
+                                </p>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {message.meta.webSources.length > 0 ? (
+                            <div className="space-y-1">
+                              <p className="text-slate-400">Web sources:</p>
+                              {message.meta.webSources.map((source, index) => (
+                                <p key={`${message.id}-w-${index}`}>
+                                  <a
+                                    href={source.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="break-all text-cyan-300 underline decoration-cyan-500/50 underline-offset-2"
+                                  >
+                                    {source.title || source.url}
+                                  </a>{" "}
+                                  ({source.source})
+                                </p>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
+                  )}
+
+                  <p className="mt-2 text-[11px] opacity-70">
+                    {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+            ))}
+
+            {isLoading ? (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-2 rounded-2xl border border-cyan-500/20 bg-slate-900 px-4 py-3 text-xs text-slate-300">
+                  <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                  Agent is working...
+                </div>
+              </div>
+            ) : null}
+
+            <div ref={chatEndRef} />
+          </div>
+        </div>
+      </div>
+
+      <div className="shrink-0 border-t border-slate-800/70 bg-[linear-gradient(180deg,rgba(2,6,23,0.72),rgba(2,6,23,0.96))] p-3 sm:p-4">
+        {activeMessages.length <= 2 ? (
+          <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible sm:pb-3">
+            {QUICK_PROMPTS.map((prompt) => (
+              <button
+                key={prompt}
+                onClick={() => void onSendMessage(prompt)}
+                disabled={isLoading}
+                className="shrink-0 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100 transition hover:bg-cyan-500/15 disabled:opacity-40"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="flex items-end gap-2">
+          <ChatInput
+            value={inputMessage}
+            onChange={(event) => onInputChange(event.target.value)}
+            onSubmit={() => void onSendMessage()}
+            loading={isLoading}
+            className="border-slate-700/70 bg-slate-900/90 shadow-[0_14px_30px_rgba(2,6,23,0.28)] focus-within:border-cyan-400/40 focus-within:ring-cyan-400/15"
+          >
+            <ChatInputTextArea
+              ref={inputRef}
+              placeholder="Message BurryAI..."
+              disabled={!hydrated}
+              className="bg-transparent px-2 py-2 text-[15px] text-slate-100 placeholder:text-slate-500"
+            />
+            <ChatInputSubmit
+              disabled={!hydrated || !inputMessage.trim()}
+              className="border-cyan-400/20 bg-gradient-to-r from-cyan-500 to-sky-500 text-white hover:from-cyan-400 hover:to-sky-400"
+            />
+          </ChatInput>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -372,7 +671,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
   const [agentStep, setAgentStep] = useState(0)
   const [openTraceId, setOpenTraceId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -391,7 +690,6 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
   )
 
   const activeMessages = activeThread?.messages ?? []
-  const activeThreadTitle = activeThread?.title ?? "New Chat"
   const isLoading = loadingThreadId === activeThread?.id
   const isFullscreen = layout === "fullscreen"
 
@@ -471,12 +769,26 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     }
   }, [activeThread, sortedThreads])
 
+  useEffect(() => {
+    if (!isFullscreen) return
+
+    const mediaQuery = window.matchMedia("(min-width: 1024px)")
+    const syncSidebar = () => setSidebarOpen(mediaQuery.matches)
+
+    syncSidebar()
+    mediaQuery.addEventListener("change", syncSidebar)
+    return () => mediaQuery.removeEventListener("change", syncSidebar)
+  }, [isFullscreen])
+
   function createNewThread() {
     const thread = createThread()
     setThreads((prev) => [thread, ...prev])
     setActiveThreadId(thread.id)
     setInputMessage("")
     setOpenTraceId(null)
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setSidebarOpen(false)
+    }
   }
 
   function updateThreadMessages(
@@ -497,16 +809,6 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     )
   }
 
-  function clearCurrentChat() {
-    if (!activeThread) return
-    updateThreadMessages(activeThread.id, () => ({
-      messages: [createWelcomeMessage()],
-      title: "New Chat"
-    }))
-    setInputMessage("")
-    setOpenTraceId(null)
-  }
-
   function deleteThread(threadId: string) {
     setThreads((prev) => {
       if (prev.length === 1) {
@@ -521,6 +823,13 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
       }
       return next
     })
+  }
+
+  function openThread(threadId: string) {
+    setActiveThreadId(threadId)
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setSidebarOpen(false)
+    }
   }
 
   async function sendMessage(textOverride?: string) {
@@ -597,35 +906,36 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     <div
       className={
         isFullscreen
-          ? `grid h-full min-h-0 grid-cols-1 gap-0 lg:gap-4 ${
-              sidebarOpen ? "lg:grid-cols-[280px,minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)]"
+          ? `grid h-full min-h-0 grid-cols-1 gap-4 ${
+              sidebarOpen ? "lg:grid-cols-[320px,minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)]"
             }`
           : "w-full space-y-3"
       }
     >
       {isFullscreen && sidebarOpen ? (
-        <aside className="hidden min-h-0 rounded-2xl border border-slate-800 bg-slate-950/80 p-3 lg:block">
-          <button
-            type="button"
-            onClick={createNewThread}
-            className="mb-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20"
-          >
-            <MessageSquarePlus className="h-4 w-4" />
-            New Chat
-          </button>
-
-          <div className="max-h-[calc(100svh-13rem)] space-y-2 overflow-y-auto pr-1">
-            {sortedThreads.map((thread) => (
-              <ThreadCard
-                key={thread.id}
-                active={activeThread?.id === thread.id}
-                thread={thread}
-                onOpen={() => setActiveThreadId(thread.id)}
-                onDelete={() => deleteThread(thread.id)}
+        <>
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)}>
+            <div className="h-full w-full max-w-[320px]" onClick={(event) => event.stopPropagation()}>
+              <AdvisorSidebar
+                activeThreadId={activeThread?.id ?? null}
+                onClose={() => setSidebarOpen(false)}
+                onCreateThread={createNewThread}
+                onDeleteThread={deleteThread}
+                onOpenThread={openThread}
+                sortedThreads={sortedThreads}
+                variant="mobile"
               />
-            ))}
+            </div>
           </div>
-        </aside>
+
+          <AdvisorSidebar
+            activeThreadId={activeThread?.id ?? null}
+            onCreateThread={createNewThread}
+            onDeleteThread={deleteThread}
+            onOpenThread={openThread}
+            sortedThreads={sortedThreads}
+          />
+        </>
       ) : !isFullscreen ? (
         <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
           <button
@@ -657,272 +967,25 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         </div>
       ) : null}
 
-      <div
-        className={`flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.97))] shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
-          isFullscreen ? "h-full min-h-[calc(100svh-15rem)]" : "min-h-[32rem] sm:min-h-[38rem] lg:h-[calc(100svh-11rem)]"
-        }`}
-      >
-        <div className="border-b border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(15,23,42,0.58))] px-4 py-4 sm:px-5">
-          <div className="flex items-center justify-between lg:hidden">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen((open) => !open)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/85 text-slate-200 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
-              title={sidebarOpen ? "Hide chats" : "Show chats"}
-              aria-label={sidebarOpen ? "Hide chats" : "Show chats"}
-            >
-              {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </button>
-
-            <div className="min-w-0 flex-1 px-3 text-center">
-              <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-fuchsia-300/80">BurryAI</p>
-              <h3 className="truncate text-sm font-semibold text-slate-50">{activeThreadTitle}</h3>
-            </div>
-
-            <button
-              type="button"
-              onClick={createNewThread}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-200 shadow-[0_10px_24px_rgba(217,70,239,0.16)]"
-              title="New chat"
-              aria-label="New chat"
-            >
-              <MessageSquarePlus className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 lg:hidden">
-            <span className="truncate">
-              Income ${userData.monthlyIncome.toLocaleString()} | Expenses ${userData.monthlyExpenses.toLocaleString()}
-            </span>
-            <button
-              type="button"
-              onClick={clearCurrentChat}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-700/80 bg-slate-900/75 px-3 py-1.5 text-[11px] text-slate-300"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-              Clear
-            </button>
-          </div>
-
-          {isFullscreen && sidebarOpen ? (
-            <div className="hide-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-              {sortedThreads.map((thread) => (
-                <ThreadCard
-                  key={thread.id}
-                  active={activeThread?.id === thread.id}
-                  thread={thread}
-                  compact
-                  onOpen={() => setActiveThreadId(thread.id)}
-                  onDelete={() => deleteThread(thread.id)}
-                />
-              ))}
-            </div>
-          ) : null}
-
-          <div className="hidden lg:flex lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <AdvisorBrandMark />
-              <div className="min-w-0">
-                <h3 className="font-semibold text-slate-100">BurryAI Advisor</h3>
-                <p className="text-sm text-slate-400">
-                  Monthly income ${userData.monthlyIncome.toLocaleString()} | Expenses ${userData.monthlyExpenses.toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-            {isFullscreen ? (
-              <button
-                type="button"
-                onClick={() => setSidebarOpen((open) => !open)}
-                className="hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800 lg:inline-flex"
-                title={sidebarOpen ? "Hide chat sidebar" : "Show chat sidebar"}
-                aria-label={sidebarOpen ? "Hide chat sidebar" : "Show chat sidebar"}
-              >
-                {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={clearCurrentChat}
-              className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 sm:w-auto"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Clear Chat
-            </button>
-          </div>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center gap-2 border-b border-slate-800 bg-slate-950/60 px-4 py-2 text-xs text-cyan-200 sm:px-5">
-            <Search className="h-3.5 w-3.5 animate-pulse" />
-            {AGENT_STEPS[agentStep]}
-          </div>
-        ) : null}
-
-        <div className="hide-scrollbar flex-1 min-h-0 space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(236,72,153,0.08),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.4),rgba(2,6,23,0.28))] p-4 sm:p-5">
-          {activeMessages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
-            >
-              <div
-                className={`max-w-[87%] px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.18)] sm:max-w-[88%] ${
-                  message.role === "assistant"
-                    ? "rounded-[1.6rem] rounded-bl-md border border-slate-800/60 bg-slate-900/92 text-slate-100"
-                    : "rounded-[1.6rem] rounded-br-md bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 text-white"
-                }`}
-              >
-                {message.role === "assistant" ? (
-                  <div className="relative">
-                    {message.meta ? (
-                      <button
-                        type="button"
-                        onClick={() => setOpenTraceId((prev) => (prev === message.id ? null : message.id))}
-                        className="absolute right-0 top-0 inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-cyan-200"
-                        title="Show agent details"
-                        aria-label="Show agent details"
-                      >
-                        <Info className="h-3.5 w-3.5" />
-                      </button>
-                    ) : null}
-
-                    <div className={message.meta ? "space-y-1 pr-8" : "space-y-1"}>
-                      {renderAssistantContent(message.content)}
-                    </div>
-
-                    {openTraceId === message.id && message.meta ? (
-                      <div className="mt-3 space-y-2 rounded-xl border border-cyan-500/20 bg-slate-950/70 p-3 text-xs text-slate-300">
-                        <p>
-                          <span className="text-slate-400">Intent:</span> {message.meta.intent}
-                        </p>
-                        <p>
-                          <span className="text-slate-400">Model:</span> {normalizeModelName(message.modelUsed)}
-                        </p>
-                        <p>
-                          <span className="text-slate-400">RAG:</span> {message.meta.rag.knowledge_count} knowledge chunks, {message.meta.rag.web_count} web results, search triggered: {message.meta.rag.web_search_triggered ? "yes" : "no"}
-                        </p>
-                        <p>
-                          <span className="text-slate-400">Tools:</span>{" "}
-                          {message.meta.usedTools.join(", ") || "none"}
-                        </p>
-
-                        {message.meta.toolSummaries.length > 0 ? (
-                          <div className="space-y-1">
-                            <p className="text-slate-400">Tool outputs:</p>
-                            {message.meta.toolSummaries.map((tool) => (
-                              <p key={`${message.id}-${tool.name}`}>
-                                {tool.name}: {tool.summary}
-                              </p>
-                            ))}
-                          </div>
-                        ) : null}
-
-                        {message.meta.knowledgeSources.length > 0 ? (
-                          <div className="space-y-1">
-                            <p className="text-slate-400">Knowledge sources:</p>
-                            {message.meta.knowledgeSources.map((source, index) => (
-                              <p key={`${message.id}-k-${index}`}>
-                                {source.title} ({source.source})
-                              </p>
-                            ))}
-                          </div>
-                        ) : null}
-
-                        {message.meta.webSources.length > 0 ? (
-                          <div className="space-y-1">
-                            <p className="text-slate-400">Web sources:</p>
-                            {message.meta.webSources.map((source, index) => (
-                              <p key={`${message.id}-w-${index}`}>
-                                <a
-                                  href={source.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="break-all text-cyan-300 underline decoration-cyan-500/50 underline-offset-2"
-                                >
-                                  {source.title || source.url}
-                                </a>{" "}
-                                ({source.source})
-                              </p>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
-                )}
-
-                <p className="mt-2 text-[11px] opacity-70">
-                  {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </p>
-              </div>
-            </div>
-          ))}
-
-          {isLoading ? (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-2 rounded-2xl border border-cyan-500/20 bg-slate-900 px-4 py-3 text-xs text-slate-300">
-                <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
-                Agent is working...
-              </div>
-            </div>
-          ) : null}
-
-          <div ref={chatEndRef} />
-        </div>
-
-        {activeMessages.length <= 2 ? (
-          <div className="border-t border-slate-800/70 bg-slate-950/70 px-4 py-3">
-            <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-              {QUICK_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  onClick={() => void sendMessage(prompt)}
-                  disabled={isLoading}
-                  className="shrink-0 rounded-full border border-fuchsia-400/20 bg-fuchsia-500/8 px-3 py-1.5 text-xs text-fuchsia-200 hover:bg-fuchsia-500/15 disabled:opacity-40"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="border-t border-slate-800/70 bg-[linear-gradient(180deg,rgba(2,6,23,0.65),rgba(2,6,23,0.95))] p-3 sm:p-4">
-          <div className="flex items-end gap-2">
-            <button
-              type="button"
-              onClick={createNewThread}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/85 text-slate-200 shadow-[0_10px_24px_rgba(2,6,23,0.28)] lg:hidden"
-              title="New chat"
-              aria-label="New chat"
-            >
-              <MessageSquarePlus className="h-4 w-4" />
-            </button>
-
-            <ChatInput
-              value={inputMessage}
-              onChange={(event) => setInputMessage(event.target.value)}
-              onSubmit={() => void sendMessage()}
-              loading={isLoading}
-              className="border-slate-700/70 bg-slate-900/90 shadow-[0_14px_30px_rgba(2,6,23,0.28)] focus-within:border-fuchsia-400/40 focus-within:ring-fuchsia-400/20"
-            >
-              <ChatInputTextArea
-                ref={inputRef}
-                placeholder="Message BurryAI..."
-                disabled={!hydrated}
-                className="bg-transparent px-2 py-2 text-[15px] text-slate-100 placeholder:text-slate-500"
-              />
-              <ChatInputSubmit
-                disabled={!hydrated || !inputMessage.trim()}
-                className="border-fuchsia-400/20 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 text-white hover:from-fuchsia-400 hover:via-pink-400 hover:to-rose-400"
-              />
-            </ChatInput>
-          </div>
-        </div>
+      <div className="min-h-0 min-w-0">
+        <AdvisorConversationPanel
+          activeMessages={activeMessages}
+          agentStep={agentStep}
+          chatEndRef={chatEndRef}
+          hydrated={hydrated}
+          inputMessage={inputMessage}
+          inputRef={inputRef}
+          isFullscreen={isFullscreen}
+          isLoading={isLoading}
+          onInputChange={setInputMessage}
+          onSendMessage={sendMessage}
+          onToggleSidebar={() => setSidebarOpen((open) => !open)}
+          openTraceId={openTraceId}
+          sidebarOpen={sidebarOpen}
+          setOpenTraceId={setOpenTraceId}
+          showSidebarToggle={isFullscreen}
+          userData={userData}
+        />
       </div>
     </div>
   )
