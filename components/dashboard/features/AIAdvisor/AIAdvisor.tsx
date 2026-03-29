@@ -5,6 +5,7 @@ import {
   CircleDollarSign,
   Info,
   Loader2,
+  MoreHorizontal,
   MessageSquarePlus,
   Search,
   Sparkles,
@@ -390,6 +391,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
   )
 
   const activeMessages = activeThread?.messages ?? []
+  const activeThreadTitle = activeThread?.title ?? "New Chat"
   const isLoading = loadingThreadId === activeThread?.id
   const isFullscreen = layout === "fullscreen"
 
@@ -595,7 +597,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     <div
       className={
         isFullscreen
-          ? `grid h-full min-h-0 grid-cols-1 gap-4 ${
+          ? `grid h-full min-h-0 grid-cols-1 gap-0 lg:gap-4 ${
               sidebarOpen ? "lg:grid-cols-[280px,minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)]"
             }`
           : "w-full space-y-3"
@@ -655,54 +657,80 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         </div>
       ) : null}
 
-      {isFullscreen ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/75 p-3 lg:hidden">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              type="button"
-              onClick={createNewThread}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 sm:w-auto"
-            >
-              <MessageSquarePlus className="h-4 w-4" />
-              New Chat
-            </button>
-
-            <div className="text-xs text-slate-400">{sortedThreads.length} saved chats</div>
-          </div>
-
-          <div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
-            {sortedThreads.map((thread) => (
-              <ThreadCard
-                key={thread.id}
-                active={activeThread?.id === thread.id}
-                thread={thread}
-                compact
-                onOpen={() => setActiveThreadId(thread.id)}
-                onDelete={() => deleteThread(thread.id)}
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       <div
-        className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#020617]/95 shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
+        className={`flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.97))] shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
           isFullscreen ? "h-full min-h-[calc(100svh-15rem)]" : "min-h-[32rem] sm:min-h-[38rem] lg:h-[calc(100svh-11rem)]"
         }`}
       >
-        <div className="flex flex-col gap-3 border-b border-slate-800 bg-slate-950/70 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <AdvisorBrandMark />
-            <div className="min-w-0">
-              <h3 className="font-semibold text-slate-100">BurryAI Advisor</h3>
-              <p className="text-xs text-slate-400 sm:text-sm">
-                Monthly income ${userData.monthlyIncome.toLocaleString()} | Expenses $
-                {userData.monthlyExpenses.toLocaleString()}
-              </p>
+        <div className="border-b border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(15,23,42,0.58))] px-4 py-4 sm:px-5">
+          <div className="flex items-center justify-between lg:hidden">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((open) => !open)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/85 text-slate-200 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
+              title={sidebarOpen ? "Hide chats" : "Show chats"}
+              aria-label={sidebarOpen ? "Hide chats" : "Show chats"}
+            >
+              {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+
+            <div className="min-w-0 flex-1 px-3 text-center">
+              <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-fuchsia-300/80">BurryAI</p>
+              <h3 className="truncate text-sm font-semibold text-slate-50">{activeThreadTitle}</h3>
             </div>
+
+            <button
+              type="button"
+              onClick={createNewThread}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-200 shadow-[0_10px_24px_rgba(217,70,239,0.16)]"
+              title="New chat"
+              aria-label="New chat"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 lg:hidden">
+            <span className="truncate">
+              Income ${userData.monthlyIncome.toLocaleString()} | Expenses ${userData.monthlyExpenses.toLocaleString()}
+            </span>
+            <button
+              type="button"
+              onClick={clearCurrentChat}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-700/80 bg-slate-900/75 px-3 py-1.5 text-[11px] text-slate-300"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+              Clear
+            </button>
+          </div>
+
+          {isFullscreen && sidebarOpen ? (
+            <div className="hide-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+              {sortedThreads.map((thread) => (
+                <ThreadCard
+                  key={thread.id}
+                  active={activeThread?.id === thread.id}
+                  thread={thread}
+                  compact
+                  onOpen={() => setActiveThreadId(thread.id)}
+                  onDelete={() => deleteThread(thread.id)}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          <div className="hidden lg:flex lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <AdvisorBrandMark />
+              <div className="min-w-0">
+                <h3 className="font-semibold text-slate-100">BurryAI Advisor</h3>
+                <p className="text-sm text-slate-400">
+                  Monthly income ${userData.monthlyIncome.toLocaleString()} | Expenses ${userData.monthlyExpenses.toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
             {isFullscreen ? (
               <button
                 type="button"
@@ -723,6 +751,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
               Clear Chat
             </button>
           </div>
+          </div>
         </div>
 
         {isLoading ? (
@@ -732,17 +761,17 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
           </div>
         ) : null}
 
-        <div className="hide-scrollbar flex-1 min-h-0 space-y-4 overflow-y-auto p-3 sm:p-5">
+        <div className="hide-scrollbar flex-1 min-h-0 space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(236,72,153,0.08),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.4),rgba(2,6,23,0.28))] p-4 sm:p-5">
           {activeMessages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
             >
               <div
-                className={`max-w-[92%] rounded-2xl px-4 py-3 sm:max-w-[88%] ${
+                className={`max-w-[87%] px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.18)] sm:max-w-[88%] ${
                   message.role === "assistant"
-                    ? "border border-slate-800 bg-slate-900 text-slate-100"
-                    : "bg-gradient-to-br from-cyan-400 to-cyan-300 text-slate-950"
+                    ? "rounded-[1.6rem] rounded-bl-md border border-slate-800/60 bg-slate-900/92 text-slate-100"
+                    : "rounded-[1.6rem] rounded-br-md bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 text-white"
                 }`}
               >
                 {message.role === "assistant" ? (
@@ -846,14 +875,14 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         </div>
 
         {activeMessages.length <= 2 ? (
-          <div className="border-t border-slate-800 bg-slate-950/80 px-4 py-3">
+          <div className="border-t border-slate-800/70 bg-slate-950/70 px-4 py-3">
             <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
               {QUICK_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => void sendMessage(prompt)}
                   disabled={isLoading}
-                  className="shrink-0 rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/15 disabled:opacity-40"
+                  className="shrink-0 rounded-full border border-fuchsia-400/20 bg-fuchsia-500/8 px-3 py-1.5 text-xs text-fuchsia-200 hover:bg-fuchsia-500/15 disabled:opacity-40"
                 >
                   {prompt}
                 </button>
@@ -862,25 +891,37 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
           </div>
         ) : null}
 
-        <div className="border-t border-slate-800 bg-slate-950/90 p-3 sm:p-4">
-          <ChatInput
-            value={inputMessage}
-            onChange={(event) => setInputMessage(event.target.value)}
-            onSubmit={() => void sendMessage()}
-            loading={isLoading}
-            className="border-slate-700 bg-slate-900/70 focus-within:border-cyan-500/40 focus-within:ring-cyan-500/20"
-          >
-            <ChatInputTextArea
-              ref={inputRef}
-              placeholder="Ask about budgeting, savings, debt, or spending..."
-              disabled={!hydrated}
-              className="bg-transparent text-slate-100 placeholder:text-slate-500"
-            />
-            <ChatInputSubmit
-              disabled={!hydrated || !inputMessage.trim()}
-              className="border-cyan-500/30 bg-gradient-to-br from-cyan-400 to-cyan-500 text-slate-950 hover:from-cyan-300 hover:to-cyan-400"
-            />
-          </ChatInput>
+        <div className="border-t border-slate-800/70 bg-[linear-gradient(180deg,rgba(2,6,23,0.65),rgba(2,6,23,0.95))] p-3 sm:p-4">
+          <div className="flex items-end gap-2">
+            <button
+              type="button"
+              onClick={createNewThread}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/85 text-slate-200 shadow-[0_10px_24px_rgba(2,6,23,0.28)] lg:hidden"
+              title="New chat"
+              aria-label="New chat"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </button>
+
+            <ChatInput
+              value={inputMessage}
+              onChange={(event) => setInputMessage(event.target.value)}
+              onSubmit={() => void sendMessage()}
+              loading={isLoading}
+              className="border-slate-700/70 bg-slate-900/90 shadow-[0_14px_30px_rgba(2,6,23,0.28)] focus-within:border-fuchsia-400/40 focus-within:ring-fuchsia-400/20"
+            >
+              <ChatInputTextArea
+                ref={inputRef}
+                placeholder="Message BurryAI..."
+                disabled={!hydrated}
+                className="bg-transparent px-2 py-2 text-[15px] text-slate-100 placeholder:text-slate-500"
+              />
+              <ChatInputSubmit
+                disabled={!hydrated || !inputMessage.trim()}
+                className="border-fuchsia-400/20 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 text-white hover:from-fuchsia-400 hover:via-pink-400 hover:to-rose-400"
+              />
+            </ChatInput>
+          </div>
         </div>
       </div>
     </div>

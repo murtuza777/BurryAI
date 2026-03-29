@@ -53,7 +53,7 @@ function ChatInput({
 			<div
 				className={cn(
 					variant === "default" &&
-						"flex flex-col items-end w-full p-2 rounded-2xl border border-input bg-transparent focus-within:ring-1 focus-within:ring-ring focus-within:outline-none",
+						"flex w-full items-end gap-2 rounded-[1.75rem] border border-input bg-transparent p-2 focus-within:outline-none focus-within:ring-1 focus-within:ring-ring",
 					variant === "unstyled" && "flex items-start gap-2 w-full",
 					className,
 				)}
@@ -113,7 +113,7 @@ function ChatInputTextArea({
 			onChange={onChange}
 			onKeyDown={handleKeyDown}
 			className={cn(
-				"max-h-[400px] min-h-0 resize-none overflow-x-hidden",
+				"max-h-[400px] min-h-0 flex-1 resize-none overflow-x-hidden",
 				variant === "unstyled" &&
 					"border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none",
 				className,
@@ -148,7 +148,7 @@ function ChatInputSubmit({
 			<Button
 				onClick={onStop}
 				className={cn(
-					"shrink-0 rounded-full p-1.5 h-fit border dark:border-zinc-600",
+					"h-10 w-10 shrink-0 rounded-full border p-0 dark:border-zinc-600",
 					className,
 				)}
 				{...props}
@@ -178,7 +178,7 @@ function ChatInputSubmit({
 	return (
 		<Button
 			className={cn(
-				"shrink-0 rounded-full p-1.5 h-fit border dark:border-zinc-600",
+				"h-10 w-10 shrink-0 rounded-full border p-0 dark:border-zinc-600",
 				className,
 			)}
 			disabled={isDisabled}
