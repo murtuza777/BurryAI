@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   title: 'BurryAI',
   description: 'AI-Powered Student Finance Management',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
-    shortcut: '/favicon.ico'
+    icon: '/burryaiLogo.png',
+    apple: '/burryaiLogo.png',
+    shortcut: '/burryaiLogo.png'
   }
 }
 
