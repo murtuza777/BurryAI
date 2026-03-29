@@ -128,7 +128,9 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
     >
       <div
         className={`mx-auto w-full max-w-[1800px] px-3 pt-4 sm:px-4 md:px-6 md:pt-6 lg:px-8 ${
-          isAdvisorRoute ? 'flex h-full min-h-0 flex-col pb-3 md:pb-4' : 'pb-28 sm:pb-32 md:pb-6'
+          isAdvisorRoute
+            ? 'flex h-full min-h-0 flex-col pb-[calc(env(safe-area-inset-bottom)+6.5rem)] md:pb-4'
+            : 'pb-28 sm:pb-32 md:pb-6'
         }`}
       >
         <header className="sticky top-3 z-40 rounded-[1.75rem] border border-slate-800/90 bg-slate-950/75 px-3 py-3 shadow-[0_12px_42px_rgba(2,6,23,0.55)] backdrop-blur-xl sm:px-4 md:top-4 md:rounded-[2rem]">
