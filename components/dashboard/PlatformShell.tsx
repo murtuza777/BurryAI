@@ -89,6 +89,7 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
     () => NAV_ITEMS.find((item) => isActiveNav(pathname, item.href)) ?? NAV_ITEMS[0],
     [pathname]
   )
+  const isAdvisorRoute = pathname.startsWith('/dashboard/advisor')
 
   const profileInitial = useMemo(() => {
     const trimmed = identityLabel.trim()
@@ -120,8 +121,16 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-[100svh] bg-[radial-gradient(circle_at_7%_0%,rgba(6,182,212,0.18),transparent_35%),radial-gradient(circle_at_92%_4%,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#010817_0%,#020617_100%)] text-white">
-      <div className="mx-auto w-full max-w-[1800px] px-3 pb-28 pt-4 sm:px-4 sm:pb-32 md:px-6 md:pb-6 md:pt-6 lg:px-8">
+    <div
+      className={`bg-[radial-gradient(circle_at_7%_0%,rgba(6,182,212,0.18),transparent_35%),radial-gradient(circle_at_92%_4%,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#010817_0%,#020617_100%)] text-white ${
+        isAdvisorRoute ? 'h-[100svh] overflow-hidden' : 'min-h-[100svh]'
+      }`}
+    >
+      <div
+        className={`mx-auto w-full max-w-[1800px] px-3 pt-4 sm:px-4 md:px-6 md:pt-6 lg:px-8 ${
+          isAdvisorRoute ? 'flex h-full min-h-0 flex-col pb-3 md:pb-4' : 'pb-28 sm:pb-32 md:pb-6'
+        }`}
+      >
         <header className="sticky top-3 z-40 rounded-[1.75rem] border border-slate-800/90 bg-slate-950/75 px-3 py-3 shadow-[0_12px_42px_rgba(2,6,23,0.55)] backdrop-blur-xl sm:px-4 md:top-4 md:rounded-[2rem]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 shrink">
@@ -221,7 +230,7 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
           </nav>
         </header>
 
-        <main className="mt-4 min-h-[calc(100svh-8rem)] pb-2 md:mt-5 md:pb-0">
+        <main className={isAdvisorRoute ? 'mt-4 flex min-h-0 flex-1 flex-col overflow-hidden pb-0 md:mt-5' : 'mt-4 min-h-[calc(100svh-8rem)] pb-2 md:mt-5 md:pb-0'}>
           {isGuest ? (
             <div className="mb-4 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-amber-100">
               Guest mode is active. Sign up to save real financial data and analytics.
