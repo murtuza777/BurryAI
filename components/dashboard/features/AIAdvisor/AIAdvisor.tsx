@@ -906,7 +906,7 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     <div
       className={
         isFullscreen
-          ? `grid h-full min-h-0 grid-cols-1 gap-4 ${
+          ? `grid h-full min-h-0 grid-cols-1 gap-4 pb-[calc(env(safe-area-inset-bottom)+5.75rem)] md:pb-0 ${
               sidebarOpen ? "lg:grid-cols-[320px,minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)]"
             }`
           : "w-full space-y-3"

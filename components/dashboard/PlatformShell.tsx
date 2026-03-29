@@ -129,7 +129,7 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
       <div
         className={`mx-auto w-full max-w-[1800px] px-3 pt-4 sm:px-4 md:px-6 md:pt-6 lg:px-8 ${
           isAdvisorRoute
-            ? 'flex h-full min-h-0 flex-col pb-[calc(env(safe-area-inset-bottom)+6.5rem)] md:pb-4'
+            ? 'flex h-full min-h-0 flex-col pb-[calc(env(safe-area-inset-bottom)+8rem)] md:pb-4'
             : 'pb-28 sm:pb-32 md:pb-6'
         }`}
       >
