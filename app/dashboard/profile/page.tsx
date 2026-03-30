@@ -14,6 +14,8 @@ import { PROFILE_SPENDING_DESCRIPTION, getProfileSpendingExpenses } from '@/lib/
 import {
   createExpense,
   createLoan,
+  deleteLoan,
+  getLoans,
   deleteExpense,
   getFinancialProfile,
   getExpenses,
@@ -140,6 +142,7 @@ export default function DashboardProfilePage() {
   })
   const [spendingRows, setSpendingRows] = useState<SpendingRow[]>(buildDefaultSpendingRows)
   const [storedSpendingExpenseIds, setStoredSpendingExpenseIds] = useState<string[]>([])
+  const [loans, setLoans] = useState<Array<{ id: string; loan_name: string; remaining_balance: number; interest_rate: number; minimum_payment: number; due_date: string | null }>>([])
   const [newLoan, setNewLoan] = useState({
     loan_name: '',
     loan_amount: 0,
@@ -158,7 +161,7 @@ export default function DashboardProfilePage() {
     setSuccess('')
     setLoading(true)
     try {
-      const [profileData, expenseData] = await Promise.all([getFinancialProfile(), getExpenses()])
+      const [profileData, expenseData, loanData] = await Promise.all([getFinancialProfile(), getExpenses(), getLoans()])
       setProfileForm({
         full_name: profileData.full_name,
         country: profileData.country,
@@ -180,6 +183,7 @@ export default function DashboardProfilePage() {
       const profileSpendingExpenses = getProfileSpendingExpenses(expenseData.expenses)
       setSpendingRows(toSpendingRows(expenseData.expenses))
       setStoredSpendingExpenseIds(profileSpendingExpenses.map((expense) => expense.id))
+      setLoans(loanData.loans)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load profile')
     } finally {
@@ -265,11 +269,20 @@ export default function DashboardProfilePage() {
   }
 
   async function handleCreateLoan() {
-    if (isGuest || newLoan.loan_amount <= 0 || newLoan.monthly_payment <= 0) return
+    if (isGuest) {
+      setError('Guest mode cannot save loans. Sign up to keep your loan plan.')
+      return
+    }
+
+    if (newLoan.loan_amount <= 0) {
+      setError('Enter a loan amount greater than 0.')
+      return
+    }
+
     setError('')
     setSuccess('')
     try {
-      await createLoan({
+      const createdLoan = await createLoan({
         loan_name: newLoan.loan_name || undefined,
         loan_amount: Number(newLoan.loan_amount),
         interest_rate: Number(newLoan.interest_rate),
@@ -283,9 +296,26 @@ export default function DashboardProfilePage() {
         monthly_payment: 0,
         next_payment_date: ''
       })
-      setSuccess('Loan added successfully.')
+      setLoans((prev) => [createdLoan, ...prev])
+      setSuccess(
+        createdLoan.minimum_payment > 0
+          ? 'Loan added successfully. Check Timeline for the repayment plan.'
+          : 'Loan added in deferment mode. Timeline will help you plan once payments begin.'
+      )
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Failed to add loan')
+    }
+  }
+
+  async function handleDeleteLoan(id: string) {
+    setError('')
+    setSuccess('')
+    try {
+      await deleteLoan(id)
+      setLoans((prev) => prev.filter((loan) => loan.id !== id))
+      setSuccess('Loan removed successfully.')
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Failed to delete loan')
     }
   }
 
@@ -633,6 +663,9 @@ export default function DashboardProfilePage() {
 
           <div className="space-y-3 rounded-xl border border-slate-700/60 bg-slate-950/50 p-5">
             <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200/90">Quick Add Loan</h4>
+            <p className="text-sm text-slate-400">
+              Add student loans even if payments have not started yet. Leave the first payment date blank if you are still in school or in grace period.
+            </p>
             <Input
               placeholder="Loan name (e.g. Student Loan)"
               value={newLoan.loan_name}
@@ -658,7 +691,7 @@ export default function DashboardProfilePage() {
             <Input
               type="number"
               min={0}
-              placeholder="Monthly payment"
+              placeholder="Monthly payment (0 if deferred)"
               value={newLoan.monthly_payment}
               onChange={(event) =>
                 setNewLoan((prev) => ({ ...prev, monthly_payment: Number(event.target.value || 0) }))
@@ -679,6 +712,50 @@ export default function DashboardProfilePage() {
             >
               Add loan
             </Button>
+
+            <div className="rounded-xl border border-slate-800/70 bg-slate-900/60 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h5 className="text-sm font-semibold text-slate-100">Saved loans</h5>
+                <span className="text-xs text-slate-400">{loans.length} total</span>
+              </div>
+
+              <div className="mt-3 space-y-3">
+                {loans.length === 0 ? (
+                  <p className="text-sm text-slate-400">
+                    No loans added yet. Add one above to build a student-friendly timeline.
+                  </p>
+                ) : (
+                  loans.map((loan) => (
+                    <div key={loan.id} className="rounded-lg border border-slate-800/80 bg-slate-950/70 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-slate-100">{loan.loan_name}</p>
+                          <p className="text-xs text-slate-400">
+                            Balance ${loan.remaining_balance.toLocaleString()} | Rate {loan.interest_rate}%
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {loan.minimum_payment > 0
+                              ? `Monthly payment $${loan.minimum_payment.toLocaleString()}`
+                              : 'Deferred or grace period'}
+                            {loan.due_date ? ` | First payment ${loan.due_date}` : ' | First payment date not set'}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => void handleDeleteLoan(loan.id)}
+                          className="border-slate-700 bg-slate-900/80 hover:bg-slate-800"
+                          aria-label={`Delete ${loan.loan_name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

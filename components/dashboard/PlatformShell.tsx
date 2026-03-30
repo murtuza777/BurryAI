@@ -129,11 +129,15 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
       <div
         className={`mx-auto w-full max-w-[1800px] px-3 pt-4 sm:px-4 md:px-6 md:pt-6 lg:px-8 ${
           isAdvisorRoute
-            ? 'flex h-full min-h-0 flex-col pb-[calc(env(safe-area-inset-bottom)+8rem)] md:pb-4'
+            ? 'flex h-full min-h-0 flex-col pb-[calc(env(safe-area-inset-bottom)+8rem)] pt-0 md:pb-4 md:pt-6'
             : 'pb-28 sm:pb-32 md:pb-6'
         }`}
       >
-        <header className="sticky top-3 z-40 rounded-[1.75rem] border border-slate-800/90 bg-slate-950/75 px-3 py-3 shadow-[0_12px_42px_rgba(2,6,23,0.55)] backdrop-blur-xl sm:px-4 md:top-4 md:rounded-[2rem]">
+        <header
+          className={`sticky top-3 z-40 rounded-[1.75rem] border border-slate-800/90 bg-slate-950/75 px-3 py-3 shadow-[0_12px_42px_rgba(2,6,23,0.55)] backdrop-blur-xl sm:px-4 md:top-4 md:rounded-[2rem] ${
+            isAdvisorRoute ? 'hidden md:block' : ''
+          }`}
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 shrink">
               <BrandIdentity
@@ -232,7 +236,13 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
           </nav>
         </header>
 
-        <main className={isAdvisorRoute ? 'mt-4 flex min-h-0 flex-1 flex-col overflow-hidden pb-0 md:mt-5' : 'mt-4 min-h-[calc(100svh-8rem)] pb-2 md:mt-5 md:pb-0'}>
+        <main
+          className={
+            isAdvisorRoute
+              ? 'flex min-h-0 flex-1 flex-col overflow-hidden pb-0 md:mt-5'
+              : 'mt-4 min-h-[calc(100svh-8rem)] pb-2 md:mt-5 md:pb-0'
+          }
+        >
           {isGuest ? (
             <div className="mb-4 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-amber-100">
               Guest mode is active. Sign up to save real financial data and analytics.

@@ -27,6 +27,10 @@ export function FinancialTimeline({ userData }: TimelineProps) {
     userData.loans.reduce((sum, loan) => sum + loan.minimum_payment, 0),
     0
   )
+  const loansInDeferment = userData.loans.filter((loan) => loan.minimum_payment <= 0)
+  const nextDueLoan = userData.loans
+    .filter((loan) => loan.due_date)
+    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))[0]
   const averageInterestRate =
     userData.loans.length === 0
       ? 5.5
@@ -39,9 +43,16 @@ export function FinancialTimeline({ userData }: TimelineProps) {
     const monthlyPayment = baseMonthlyPayment
     const interestRate = (averageInterestRate / 100) / 12
 
-    for (let i = 0; i <= months; i++) {
+    data.push({
+      month: 0,
+      balance: Math.round(balance),
+      payment: monthlyPayment,
+      interest: 0
+    })
+
+    for (let i = 1; i <= months; i++) {
       const interest = balance * interestRate
-      balance = balance + interest - monthlyPayment
+      balance = Math.max(balance + interest - monthlyPayment, 0)
       if (balance < 0) balance = 0
 
       data.push({
@@ -64,7 +75,8 @@ export function FinancialTimeline({ userData }: TimelineProps) {
   // Calculate payoff dates
   const standardPayoffMonthRaw = timelineData.findIndex(d => d.balance <= 0)
   const standardPayoffMonth = standardPayoffMonthRaw === -1 ? timelineData.length : standardPayoffMonthRaw
-  const payoffDate = format(addMonths(new Date(), standardPayoffMonth), 'MMM yyyy')
+  const payoffDate =
+    standardPayoffMonth >= timelineData.length ? 'Beyond selected range' : format(addMonths(new Date(), standardPayoffMonth), 'MMM yyyy')
   
   // Calculate with extra payments
   const extraPaymentData = []
@@ -79,12 +91,21 @@ export function FinancialTimeline({ userData }: TimelineProps) {
     monthsWithExtra++
   }
 
-  const payoffDateWithExtra = format(addMonths(new Date(), monthsWithExtra), 'MMM yyyy')
+  const payoffDateWithExtra =
+    balanceWithExtra > 0 ? 'Beyond selected range' : format(addMonths(new Date(), monthsWithExtra), 'MMM yyyy')
   const interestSavings = Math.round(totalInterest - totalInterestWithExtra)
   const payoffProgress =
     userData.loanAmount > 0
       ? Math.round((1 - timelineData[timelineData.length - 1].balance / userData.loanAmount) * 100)
       : 100
+  const timelineHeadline =
+    loansInDeferment.length > 0
+      ? 'Student Loan Timeline'
+      : 'Loan Repayment Timeline'
+  const timelineSupportCopy =
+    loansInDeferment.length > 0
+      ? 'Some loans are still in deferment or grace period. The chart helps you see how balances move before regular payments begin.'
+      : 'Track your payoff path and compare what happens when you pay more each month.'
 
   return (
     <div className="space-y-6">
@@ -119,8 +140,9 @@ export function FinancialTimeline({ userData }: TimelineProps) {
       <HolographicCard>
         <h3 className="mb-4 flex items-center text-xl font-semibold">
           <Calendar className="w-6 h-6 text-cyan-500 mr-2" />
-          Loan Repayment Timeline
+          {timelineHeadline}
         </h3>
+        <p className="mb-4 text-sm text-slate-300">{timelineSupportCopy}</p>
         <div className="h-[280px] sm:h-[400px]">
           <Line
             data={{
@@ -213,6 +235,40 @@ export function FinancialTimeline({ userData }: TimelineProps) {
         </HolographicCard>
       </div>
 
+      <HolographicCard>
+        <h3 className="mb-4 text-xl font-semibold text-slate-100">Student Loan Planner</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-4">
+            <p className="text-sm text-slate-400">Loans in deferment</p>
+            <p className="mt-2 text-2xl font-bold text-slate-100">{loansInDeferment.length}</p>
+            <p className="mt-2 text-sm text-slate-300">
+              {loansInDeferment.length > 0
+                ? 'These loans can stay in your plan even before repayment starts.'
+                : 'All saved loans currently have a monthly payment amount.'}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-4">
+            <p className="text-sm text-slate-400">Next key date</p>
+            <p className="mt-2 text-lg font-semibold text-slate-100">
+              {nextDueLoan?.due_date ? format(new Date(nextDueLoan.due_date), 'MMM d, yyyy') : 'Set your first due date'}
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              {nextDueLoan?.loan_name
+                ? `${nextDueLoan.loan_name} is the next scheduled payment in your plan.`
+                : 'Add a first payment date in Profile to make the timeline more precise.'}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-4">
+            <p className="text-sm text-slate-400">Suggested student action</p>
+            <p className="mt-2 text-sm text-slate-300">
+              {monthlyPayment > 0
+                ? 'Keep minimums on track, then use the simulator below to test an extra $200 strategy.'
+                : 'If payments have not started, save the expected first payment date so BurryAI can build a better repayment plan.'}
+            </p>
+          </div>
+        </div>
+      </HolographicCard>
+
       {/* Payment Impact Simulator */}
       <HolographicCard>
         <h3 className="mb-4 flex items-center text-xl font-semibold">
@@ -225,6 +281,9 @@ export function FinancialTimeline({ userData }: TimelineProps) {
             <p className="text-slate-300">Monthly Payment: ${monthlyPayment.toLocaleString()}</p>
             <p className="text-slate-300">Total Interest: ${Math.round(totalInterest).toLocaleString()}</p>
             <p className="text-slate-300">Payoff Date: {payoffDate}</p>
+            {monthlyPayment === 0 ? (
+              <p className="text-amber-300">No active monthly payments are set yet, so this view is showing balance growth only.</p>
+            ) : null}
           </div>
           <div className="space-y-4">
             <h4 className="font-semibold">With Extra Payments</h4>

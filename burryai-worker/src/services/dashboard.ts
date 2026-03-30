@@ -13,8 +13,14 @@ type MonthlyExpenseRow = {
 type LoanDueRow = {
   id: string
   loan_name: string
-  due_date: string
+  due_date: string | null
   minimum_payment: number
+}
+
+function nextMonthPlanningDate(): string {
+  const today = new Date()
+  const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+  return nextMonth.toISOString().slice(0, 10)
 }
 
 type RecentExpenseRow = {
@@ -192,7 +198,7 @@ export async function getTimelineData(db: D1Database, userId: string): Promise<{
 }> {
   const [loanRows, expenseRows] = await Promise.all([
     db.prepare(
-      "SELECT id, loan_name, due_date, minimum_payment FROM loans WHERE user_id = ?1 AND due_date IS NOT NULL ORDER BY due_date ASC LIMIT 12"
+      "SELECT id, loan_name, due_date, minimum_payment FROM loans WHERE user_id = ?1 ORDER BY COALESCE(due_date, '9999-12-31') ASC, created_at DESC LIMIT 12"
     )
       .bind(userId)
       .all<LoanDueRow>(),
@@ -206,8 +212,8 @@ export async function getTimelineData(db: D1Database, userId: string): Promise<{
   const loanEvents = (loanRows.results ?? []).map((row) => ({
     id: `loan-${row.id}`,
     type: "loan_payment_due" as const,
-    date: row.due_date,
-    title: `${row.loan_name} payment due`,
+    date: row.due_date ?? nextMonthPlanningDate(),
+    title: row.due_date ? `${row.loan_name} payment due` : `Set first payment date for ${row.loan_name}`,
     amount: Number(row.minimum_payment.toFixed(2)),
     status: "upcoming" as const
   }))
