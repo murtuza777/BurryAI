@@ -135,6 +135,32 @@ export interface AgentAdviceResponse {
   }
 }
 
+export interface AdvisorChatMessageMeta {
+  intent: AgentAdviceResponse["intent"]
+  used_tools: AgentAdviceResponse["used_tools"]
+  tool_summaries: AgentAdviceResponse["tool_summaries"]
+  knowledge_sources: AgentAdviceResponse["knowledge_sources"]
+  web_sources: AgentAdviceResponse["web_sources"]
+  rag: AgentAdviceResponse["rag"]
+}
+
+export interface AdvisorChatMessage {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  timestamp: string
+  model_used?: string
+  meta?: AdvisorChatMessageMeta
+}
+
+export interface AdvisorChatThread {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  messages: AdvisorChatMessage[]
+}
+
 type ErrorResponse = {
   error?: string
 }
@@ -311,6 +337,7 @@ export interface CostAnalysisResponse {
   }
   used_tools: string[]
   knowledge_sources: Array<{ title: string; source: string }>
+  plan: CostPlan | null
 }
 
 export interface CostAnalysisInput {
@@ -374,6 +401,48 @@ export interface OpportunitySearchResponse {
   generated_queries: string[]
 }
 
+export interface CostPlanStep {
+  id: string
+  title: string
+  detail: string
+  target_amount: number
+  order_index: number
+  completed: boolean
+  completed_at: string | null
+}
+
+export interface CostPlanMilestone {
+  id: string
+  title: string
+  description: string
+  due_label: string | null
+  target_amount: number
+  order_index: number
+  completed_steps: number
+  total_steps: number
+  steps: CostPlanStep[]
+}
+
+export interface CostPlan {
+  id: string
+  analysis: string
+  model_used: string
+  monthly_income: number
+  monthly_expenses: number
+  remaining_balance: number
+  expense_ratio: number
+  financial_health_score: number
+  target_monthly_savings: number
+  created_at: string
+  updated_at: string
+  progress: {
+    completed_steps: number
+    total_steps: number
+    percentage: number
+  }
+  milestones: CostPlanMilestone[]
+}
+
 export async function getCostAnalysis(input?: CostAnalysisInput): Promise<CostAnalysisResponse> {
   const response = await apiRequest("agent/cost-analysis", {
     method: "POST",
@@ -384,6 +453,67 @@ export async function getCostAnalysis(input?: CostAnalysisInput): Promise<CostAn
   })
   if (!response.ok) throw new Error(await parseError(response))
   return (await response.json()) as CostAnalysisResponse
+}
+
+export async function listAdvisorChats(): Promise<AdvisorChatThread[]> {
+  const response = await apiRequest("agent/chats", { method: "GET" })
+  if (!response.ok) throw new Error(await parseError(response))
+  const payload = (await response.json()) as { threads: AdvisorChatThread[] }
+  return payload.threads
+}
+
+export async function createAdvisorChat(title?: string): Promise<AdvisorChatThread> {
+  const response = await apiRequest("agent/chats", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(title ? { title } : {})
+  })
+  if (!response.ok) throw new Error(await parseError(response))
+  const payload = (await response.json()) as { thread: AdvisorChatThread }
+  return payload.thread
+}
+
+export async function deleteAdvisorChat(threadId: string): Promise<void> {
+  const response = await apiRequest(`agent/chats/${threadId}`, { method: "DELETE" })
+  if (!response.ok) throw new Error(await parseError(response))
+}
+
+export async function sendAdvisorChatMessage(
+  threadId: string,
+  message: string
+): Promise<AdvisorChatThread> {
+  const response = await apiRequest(`agent/chats/${threadId}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ message })
+  })
+  if (!response.ok) throw new Error(await parseError(response))
+  const payload = (await response.json()) as { thread: AdvisorChatThread }
+  return payload.thread
+}
+
+export async function getLatestCostPlan(): Promise<CostPlan | null> {
+  const response = await apiRequest("agent/cost-plan", { method: "GET" })
+  if (!response.ok) throw new Error(await parseError(response))
+  const payload = (await response.json()) as { plan: CostPlan | null }
+  return payload.plan
+}
+
+export async function updateCostPlanStep(stepId: string, completed: boolean): Promise<CostPlan> {
+  const response = await apiRequest(`agent/cost-plan/steps/${stepId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ completed })
+  })
+  if (!response.ok) throw new Error(await parseError(response))
+  const payload = (await response.json()) as { plan: CostPlan }
+  return payload.plan
 }
 
 export async function searchOpportunities(
