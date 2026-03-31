@@ -11,6 +11,10 @@ export async function runFinancialAgent(params: {
   db: D1Database
   userId: string
   userMessage: string
+  conversationHistory?: Array<{
+    role: "user" | "assistant"
+    content: string
+  }>
   contextOverride?: {
     monthlyIncome?: number
     topExpenseCategories?: Array<{
@@ -73,6 +77,7 @@ export async function runFinancialAgent(params: {
     fallbackModel: params.fallbackModel,
     intent,
     userMessage: params.userMessage,
+    conversationHistory: params.conversationHistory,
     context,
     toolOutputs,
     knowledgeChunks,

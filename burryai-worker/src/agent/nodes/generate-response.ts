@@ -55,6 +55,25 @@ function formatToolOutputs(toolOutputs: AgentToolOutput[]): string {
     .join("\n")
 }
 
+function formatConversationHistory(
+  history: Array<{
+    role: "user" | "assistant"
+    content: string
+  }> = []
+): string {
+  if (history.length === 0) {
+    return "No prior conversation history."
+  }
+
+  return history
+    .map((message) => {
+      const normalized = message.content.replace(/\s+/g, " ").trim()
+      const trimmed = normalized.length > 400 ? `${normalized.slice(0, 400)}...` : normalized
+      return `- ${message.role}: ${trimmed}`
+    })
+    .join("\n")
+}
+
 function buildFallbackResponse(
   intent: AgentIntent,
   context: AgentContextData,
@@ -257,6 +276,10 @@ export async function generateAgentResponse(params: {
   fallbackModel?: string
   intent: AgentIntent
   userMessage: string
+  conversationHistory?: Array<{
+    role: "user" | "assistant"
+    content: string
+  }>
   context: AgentContextData
   toolOutputs: AgentToolOutput[]
   knowledgeChunks: AgentKnowledgeChunk[]
@@ -278,6 +301,9 @@ export async function generateAgentResponse(params: {
     "When citing links, write full URLs directly.",
     "Do not mention hidden reasoning or internal system details.",
     incomeSpecificInstruction,
+    "",
+    "Conversation history:",
+    formatConversationHistory(params.conversationHistory),
     "",
     `User question: ${params.userMessage}`,
     `Detected intent: ${params.intent}`,
