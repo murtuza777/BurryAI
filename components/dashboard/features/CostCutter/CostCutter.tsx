@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { HolographicCard } from '@/components/dashboard/HolographicUI'
 import {
@@ -18,11 +18,18 @@ import {
   TrendingDown,
   Target,
   CheckCircle2,
-  Scissors
+  Scissors,
+  ListChecks
 } from 'lucide-react'
 import { Doughnut } from 'react-chartjs-2'
 import '@/lib/chartjs-register'
-import { getCostAnalysis, type CostAnalysisResponse } from '@/lib/financial-client'
+import {
+  getCostAnalysis,
+  getLatestCostPlan,
+  updateCostPlanStep,
+  type CostAnalysisResponse,
+  type CostPlan
+} from '@/lib/financial-client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { renderAssistantContent } from '@/components/dashboard/shared/render-assistant-content'
@@ -74,16 +81,56 @@ function formatCurrency(value: number): string {
   return `$${value.toLocaleString()}`
 }
 
+function progressLabel(plan: CostPlan): string {
+  return `${plan.progress.completed_steps}/${plan.progress.total_steps} steps done`
+}
+
 export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
   const router = useRouter()
   const [showIntro, setShowIntro] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState<CostAnalysisResponse | null>(null)
+  const [savedPlan, setSavedPlan] = useState<CostPlan | null>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingPlan, setLoadingPlan] = useState(false)
+  const [updatingStepId, setUpdatingStepId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   const hasIncome = userData.monthlyIncome > 0
   const hasCategories = userData.categories.length > 0
   const canAnalyze = hasIncome && hasCategories && !isGuest
+
+  useEffect(() => {
+    if (isGuest) {
+      setSavedPlan(null)
+      return
+    }
+
+    let cancelled = false
+
+    const loadSavedPlan = async () => {
+      setLoadingPlan(true)
+      try {
+        const plan = await getLatestCostPlan()
+        if (!cancelled) {
+          setSavedPlan(plan)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load saved cost plan')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPlan(false)
+        }
+      }
+    }
+
+    void loadSavedPlan()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isGuest])
 
   const loadAnalysis = useCallback(async () => {
     if (isGuest) {
@@ -107,12 +154,26 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
         }))
       })
       setAiAnalysis(result)
+      setSavedPlan(result.plan)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load AI cost analysis')
     } finally {
       setLoading(false)
     }
   }, [hasCategories, hasIncome, isGuest, userData.categories, userData.monthlyIncome])
+
+  const togglePlanStep = useCallback(async (stepId: string, completed: boolean) => {
+    setUpdatingStepId(stepId)
+    setError('')
+    try {
+      const nextPlan = await updateCostPlanStep(stepId, completed)
+      setSavedPlan(nextPlan)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update plan step')
+    } finally {
+      setUpdatingStepId(null)
+    }
+  }, [])
 
   const categories = userData.categories
   const totalExpenses = categories.reduce((sum, item) => sum + item.amount, 0)
@@ -382,10 +443,10 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
                 Personalized savings ideas based only on your saved income and category totals.
               </p>
             </div>
-            {aiAnalysis?.model_used ? (
+            {(aiAnalysis?.model_used ?? savedPlan?.model_used) ? (
               <div className="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1 text-xs text-slate-300">
                 <Sparkles className="mr-2 h-3.5 w-3.5 text-orange-300" />
-                {formatModelUsed(aiAnalysis.model_used)}
+                {formatModelUsed(aiAnalysis?.model_used ?? savedPlan?.model_used)}
               </div>
             ) : null}
           </div>
@@ -421,6 +482,123 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+      </HolographicCard>
+
+      <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
+        <div className="border-b border-slate-800/70 px-5 py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-5 w-5 text-cyan-300" />
+                <h3 className="text-lg font-semibold text-white">Saved milestone plan</h3>
+              </div>
+              <p className="mt-1 text-sm text-slate-400">
+                Each new AI analysis now stores a followable cost-cutting plan with persistent steps.
+              </p>
+            </div>
+            {savedPlan ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="border-cyan-500/30 bg-cyan-500/10 text-cyan-100">
+                  {formatCurrency(savedPlan.target_monthly_savings)} monthly target
+                </Badge>
+                <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">
+                  {progressLabel(savedPlan)}
+                </Badge>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {loadingPlan && !savedPlan ? (
+          <div className="flex items-center gap-3 px-5 py-6 text-sm text-slate-300">
+            <Loader2 className="h-5 w-5 animate-spin text-cyan-300" />
+            Loading your saved cost-cutting milestones...
+          </div>
+        ) : savedPlan ? (
+          <div className="space-y-4 px-5 py-5">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-white">Plan progress</p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {savedPlan.progress.percentage}% complete with {savedPlan.progress.completed_steps} of{' '}
+                    {savedPlan.progress.total_steps} steps finished.
+                  </p>
+                </div>
+                <div className="text-sm text-slate-300">
+                  Latest target: <span className="font-semibold text-white">{formatCurrency(savedPlan.target_monthly_savings)}</span>
+                </div>
+              </div>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                  style={{ width: `${savedPlan.progress.percentage}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {savedPlan.milestones.map((milestone) => (
+                <div key={milestone.id} className="rounded-[24px] border border-slate-800 bg-slate-950/65 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-white">{milestone.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-400">{milestone.description}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      {milestone.due_label ? (
+                        <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">{milestone.due_label}</Badge>
+                      ) : null}
+                      <Badge className="border-emerald-400/30 bg-emerald-500/10 text-emerald-100">
+                        {formatCurrency(milestone.target_amount)}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {milestone.steps.map((step) => (
+                      <button
+                        key={step.id}
+                        type="button"
+                        onClick={() => void togglePlanStep(step.id, !step.completed)}
+                        disabled={updatingStepId === step.id}
+                        className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition ${
+                          step.completed
+                            ? 'border-emerald-400/30 bg-emerald-500/10'
+                            : 'border-slate-800 bg-slate-900/80 hover:border-slate-700'
+                        }`}
+                      >
+                        <div
+                          className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
+                            step.completed ? 'border-emerald-300 bg-emerald-300 text-slate-950' : 'border-slate-600 text-slate-500'
+                          }`}
+                        >
+                          {updatingStepId === step.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                            <p className={`text-sm font-medium ${step.completed ? 'text-emerald-100' : 'text-white'}`}>{step.title}</p>
+                            <span className="text-xs text-slate-400">{formatCurrency(step.target_amount)}</span>
+                          </div>
+                          <p className="mt-1 text-sm leading-6 text-slate-400">{step.detail}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="px-5 py-8">
+            <div className="rounded-[24px] border border-dashed border-slate-700 bg-slate-950/50 p-6">
+              <p className="text-base font-medium text-white">No saved milestone plan yet</p>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Run AI analysis once and BurryAI will save a month plan with milestones and step-by-step actions you can track here.
+              </p>
             </div>
           </div>
         )}
