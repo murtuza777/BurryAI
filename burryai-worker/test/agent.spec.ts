@@ -28,7 +28,12 @@ async function runFetch(request: Request, testEnv: TestEnv): Promise<Response> {
   return response
 }
 
-async function signupUser(testEnv: TestEnv): Promise<{ userId: string; cookie: string }> {
+async function signupUser(testEnv: TestEnv): Promise<{
+  userId: string
+  cookie: string
+  email: string
+  password: string
+}> {
   const email = `phase6-${Date.now()}-${Math.floor(Math.random() * 100000)}@example.com`
   const password = "Password1234!"
 
@@ -45,7 +50,9 @@ async function signupUser(testEnv: TestEnv): Promise<{ userId: string; cookie: s
   const body = (await signupResponse.json()) as { user: { id: string } }
   return {
     userId: body.user.id,
-    cookie: extractSessionCookie(signupResponse.headers.get("set-cookie"))
+    cookie: extractSessionCookie(signupResponse.headers.get("set-cookie")),
+    email,
+    password
   }
 }
 
@@ -65,6 +72,21 @@ describe("Agent routes", () => {
     )
     await env.DB.exec(
       "CREATE TABLE IF NOT EXISTS ai_logs (id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, query TEXT NOT NULL, response TEXT NOT NULL, model_used TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE)"
+    )
+    await env.DB.exec(
+      "CREATE TABLE IF NOT EXISTS advisor_threads (id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, title TEXT NOT NULL DEFAULT 'New Chat', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE)"
+    )
+    await env.DB.exec(
+      "CREATE TABLE IF NOT EXISTS advisor_messages (id TEXT PRIMARY KEY NOT NULL, thread_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, model_used TEXT, meta_json TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (thread_id) REFERENCES advisor_threads(id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE)"
+    )
+    await env.DB.exec(
+      "CREATE TABLE IF NOT EXISTS cost_cutter_plans (id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, analysis TEXT NOT NULL, model_used TEXT NOT NULL, monthly_income REAL NOT NULL DEFAULT 0, monthly_expenses REAL NOT NULL DEFAULT 0, remaining_balance REAL NOT NULL DEFAULT 0, expense_ratio REAL NOT NULL DEFAULT 0, financial_health_score INTEGER NOT NULL DEFAULT 0, target_monthly_savings REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE)"
+    )
+    await env.DB.exec(
+      "CREATE TABLE IF NOT EXISTS cost_cutter_plan_milestones (id TEXT PRIMARY KEY NOT NULL, plan_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, due_label TEXT, target_amount REAL NOT NULL DEFAULT 0, order_index INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (plan_id) REFERENCES cost_cutter_plans(id) ON DELETE CASCADE ON UPDATE CASCADE)"
+    )
+    await env.DB.exec(
+      "CREATE TABLE IF NOT EXISTS cost_cutter_plan_steps (id TEXT PRIMARY KEY NOT NULL, milestone_id TEXT NOT NULL, title TEXT NOT NULL, detail TEXT, target_amount REAL NOT NULL DEFAULT 0, order_index INTEGER NOT NULL DEFAULT 0, is_completed INTEGER NOT NULL DEFAULT 0, completed_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (milestone_id) REFERENCES cost_cutter_plan_milestones(id) ON DELETE CASCADE ON UPDATE CASCADE)"
     )
   })
 
@@ -159,5 +181,178 @@ describe("Agent routes", () => {
     expect(logRow?.query).toBe(prompt)
     expect(logRow?.response.length ?? 0).toBeGreaterThan(0)
     expect(logRow?.model_used.length ?? 0).toBeGreaterThan(0)
+  })
+
+  it("persists advisor chat threads and messages for the signed-in account", async () => {
+    const testEnv: TestEnv = {
+      ...env,
+      JWT_SECRET: "phase6-agent-secret"
+    }
+
+    const user = await signupUser(testEnv)
+
+    await env.DB.prepare("UPDATE financial_profiles SET monthly_income = ?1 WHERE user_id = ?2")
+      .bind(3200, user.userId)
+      .run()
+
+    const createResponse = await runFetch(
+      new IncomingRequest("http://example.com/agent/chats", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: user.cookie
+        },
+        body: JSON.stringify({})
+      }),
+      testEnv
+    )
+
+    expect(createResponse.status).toBe(201)
+    const createPayload = (await createResponse.json()) as {
+      thread: {
+        id: string
+        messages: Array<{ role: string; content: string }>
+      }
+    }
+    expect(createPayload.thread.messages.length).toBe(1)
+
+    const messageText = "Help me cut spending on food and subscriptions this month."
+    const sendResponse = await runFetch(
+      new IncomingRequest(`http://example.com/agent/chats/${createPayload.thread.id}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: user.cookie
+        },
+        body: JSON.stringify({ message: messageText })
+      }),
+      testEnv
+    )
+
+    expect(sendResponse.status).toBe(200)
+    const sendPayload = (await sendResponse.json()) as {
+      thread: {
+        title: string
+        messages: Array<{ role: string; content: string }>
+      }
+    }
+    expect(sendPayload.thread.title.toLowerCase()).toContain("help me cut")
+    expect(sendPayload.thread.messages.some((message) => message.role === "user" && message.content === messageText)).toBe(true)
+    expect(sendPayload.thread.messages.some((message) => message.role === "assistant")).toBe(true)
+
+    const listResponse = await runFetch(
+      new IncomingRequest("http://example.com/agent/chats", {
+        method: "GET",
+        headers: {
+          Cookie: user.cookie
+        }
+      }),
+      testEnv
+    )
+
+    expect(listResponse.status).toBe(200)
+    const listPayload = (await listResponse.json()) as {
+      threads: Array<{
+        id: string
+        messages: Array<{ role: string; content: string }>
+      }>
+    }
+    expect(listPayload.threads.some((thread) => thread.id === createPayload.thread.id)).toBe(true)
+    const persistedThread = listPayload.threads.find((thread) => thread.id === createPayload.thread.id)
+    expect(persistedThread?.messages.some((message) => message.content === messageText)).toBe(true)
+  })
+
+  it("stores a cost cutter plan with milestones and persists step completion", async () => {
+    const testEnv: TestEnv = {
+      ...env,
+      JWT_SECRET: "phase6-agent-secret"
+    }
+
+    const user = await signupUser(testEnv)
+
+    const analysisResponse = await runFetch(
+      new IncomingRequest("http://example.com/agent/cost-analysis", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: user.cookie
+        },
+        body: JSON.stringify({
+          monthlyIncome: 3000,
+          categories: [
+            { category: "Food", amount: 650 },
+            { category: "Subscriptions", amount: 120 },
+            { category: "Transport", amount: 240 }
+          ]
+        })
+      }),
+      testEnv
+    )
+
+    expect(analysisResponse.status).toBe(200)
+    const analysisPayload = (await analysisResponse.json()) as {
+      plan: {
+        id: string
+        milestones: Array<{
+          id: string
+          steps: Array<{ id: string; completed: boolean }>
+        }>
+      }
+    }
+    expect(analysisPayload.plan.milestones.length).toBeGreaterThan(0)
+    expect(analysisPayload.plan.milestones[0]?.steps.length ?? 0).toBeGreaterThan(0)
+
+    const latestPlanResponse = await runFetch(
+      new IncomingRequest("http://example.com/agent/cost-plan", {
+        method: "GET",
+        headers: {
+          Cookie: user.cookie
+        }
+      }),
+      testEnv
+    )
+
+    expect(latestPlanResponse.status).toBe(200)
+    const latestPlanPayload = (await latestPlanResponse.json()) as {
+      plan: {
+        id: string
+        progress: { completed_steps: number }
+        milestones: Array<{
+          steps: Array<{ id: string; completed: boolean }>
+        }>
+      } | null
+    }
+    expect(latestPlanPayload.plan?.id).toBe(analysisPayload.plan.id)
+
+    const firstStepId = latestPlanPayload.plan?.milestones[0]?.steps[0]?.id
+    expect(firstStepId).toBeTruthy()
+
+    const patchResponse = await runFetch(
+      new IncomingRequest(`http://example.com/agent/cost-plan/steps/${firstStepId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: user.cookie
+        },
+        body: JSON.stringify({ completed: true })
+      }),
+      testEnv
+    )
+
+    expect(patchResponse.status).toBe(200)
+    const patchPayload = (await patchResponse.json()) as {
+      plan: {
+        progress: { completed_steps: number }
+        milestones: Array<{
+          steps: Array<{ id: string; completed: boolean }>
+        }>
+      }
+    }
+    expect(patchPayload.plan.progress.completed_steps).toBeGreaterThanOrEqual(1)
+    expect(
+      patchPayload.plan.milestones.some((milestone) =>
+        milestone.steps.some((step) => step.id === firstStepId && step.completed)
+      )
+    ).toBe(true)
   })
 })
