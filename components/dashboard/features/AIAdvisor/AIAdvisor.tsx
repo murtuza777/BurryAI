@@ -12,7 +12,15 @@ import {
   Trash2
 } from "lucide-react"
 
-import { getAgentAdvice, type AgentAdviceResponse } from "@/lib/financial-client"
+import {
+  createAdvisorChat,
+  deleteAdvisorChat,
+  getAgentAdvice,
+  listAdvisorChats,
+  sendAdvisorChatMessage,
+  type AdvisorChatThread as RemoteAdvisorChatThread,
+  type AgentAdviceResponse
+} from "@/lib/financial-client"
 import { ChatInput, ChatInputSubmit, ChatInputTextArea } from "@/components/ui/chat-input"
 
 function AdvisorBrandMark() {
@@ -59,6 +67,7 @@ interface AIAdvisorProps {
     monthlyExpenses: number
     country: string
   }
+  accountId?: string | null
   layout?: "embedded" | "fullscreen"
   storageNamespace?: string
 }
@@ -288,6 +297,32 @@ function renderAssistantContent(text: string): JSX.Element[] {
 
 function formatThreadTime(date: Date): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" })
+}
+
+function fromRemoteThread(thread: RemoteAdvisorChatThread): ChatThread {
+  return {
+    id: thread.id,
+    title: thread.title,
+    createdAt: new Date(thread.created_at),
+    updatedAt: new Date(thread.updated_at),
+    messages: (thread.messages ?? []).map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      timestamp: new Date(message.timestamp),
+      modelUsed: message.model_used,
+      meta: message.meta
+        ? {
+            intent: message.meta.intent,
+            usedTools: message.meta.used_tools,
+            toolSummaries: message.meta.tool_summaries,
+            knowledgeSources: message.meta.knowledge_sources,
+            webSources: message.meta.web_sources,
+            rag: message.meta.rag
+          }
+        : undefined
+    }))
+  }
 }
 
 function toPersistedThreads(threads: ChatThread[]): PersistedThread[] {
@@ -663,7 +698,12 @@ function AdvisorConversationPanel({
   )
 }
 
-export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "default" }: AIAdvisorProps) {
+export function AIAdvisor({
+  userData,
+  accountId = null,
+  layout = "embedded",
+  storageNamespace = "default"
+}: AIAdvisorProps) {
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [activeThreadId, setActiveThreadId] = useState("")
   const [inputMessage, setInputMessage] = useState("")
@@ -672,10 +712,12 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
   const [openTraceId, setOpenTraceId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [syncError, setSyncError] = useState("")
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
+  const remotePersistence = Boolean(accountId)
   const threadStorageKey = `${CHAT_THREADS_STORAGE_PREFIX}:${storageNamespace}`
   const activeThreadStorageKey = `${ACTIVE_THREAD_STORAGE_PREFIX}:${storageNamespace}`
 
@@ -698,57 +740,108 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
   }, [activeMessages, isLoading, openTraceId, activeThread?.id])
 
   useEffect(() => {
-    try {
-      const storedThreads = localStorage.getItem(threadStorageKey)
-      const storedActiveThread = localStorage.getItem(activeThreadStorageKey)
+    let cancelled = false
 
-      if (storedThreads) {
-        const parsedThreads = fromPersistedThreads(storedThreads)
-        if (parsedThreads.length > 0) {
-          setThreads(parsedThreads)
-          const activeId =
-            storedActiveThread && parsedThreads.some((thread) => thread.id === storedActiveThread)
-              ? storedActiveThread
-              : parsedThreads[0].id
-          setActiveThreadId(activeId)
+    async function hydrateRemoteThreads() {
+      try {
+        const storedActiveThread = localStorage.getItem(activeThreadStorageKey)
+        const remoteThreads = await listAdvisorChats()
+        let nextThreads = remoteThreads.map(fromRemoteThread)
+
+        if (nextThreads.length === 0) {
+          const created = await createAdvisorChat()
+          nextThreads = [fromRemoteThread(created)]
+        }
+
+        if (cancelled) return
+
+        setThreads(nextThreads)
+        setActiveThreadId(
+          storedActiveThread && nextThreads.some((thread) => thread.id === storedActiveThread)
+            ? storedActiveThread
+            : nextThreads[0]?.id ?? ""
+        )
+        setSyncError("")
+      } catch (error) {
+        if (cancelled) return
+
+        const initial = createThread()
+        setThreads([initial])
+        setActiveThreadId(initial.id)
+        setSyncError(error instanceof Error ? error.message : "Unable to sync advisor chats right now.")
+      } finally {
+        if (!cancelled) {
           setHydrated(true)
-          return
         }
       }
-
-      const legacyRaw = localStorage.getItem(LEGACY_CHAT_STORAGE_KEY)
-      if (legacyRaw) {
-        const legacyMessages = JSON.parse(legacyRaw) as Array<
-          Omit<Message, "timestamp"> & { timestamp: string }
-        >
-        if (Array.isArray(legacyMessages) && legacyMessages.length > 0) {
-          const migrated = createThread("Previous Chat")
-          migrated.messages = legacyMessages.map((message) => ({
-            ...message,
-            timestamp: new Date(message.timestamp)
-          }))
-          migrated.updatedAt = new Date()
-          setThreads([migrated])
-          setActiveThreadId(migrated.id)
-          setHydrated(true)
-          return
-        }
-      }
-    } catch {
-      // Ignore malformed cache and regenerate below.
     }
 
-    const initial = createThread()
-    setThreads([initial])
-    setActiveThreadId(initial.id)
-    setHydrated(true)
-  }, [activeThreadStorageKey, threadStorageKey])
+    function hydrateLocalThreads() {
+      try {
+        const storedThreads = localStorage.getItem(threadStorageKey)
+        const storedActiveThread = localStorage.getItem(activeThreadStorageKey)
+
+        if (storedThreads) {
+          const parsedThreads = fromPersistedThreads(storedThreads)
+          if (parsedThreads.length > 0) {
+            setThreads(parsedThreads)
+            setActiveThreadId(
+              storedActiveThread && parsedThreads.some((thread) => thread.id === storedActiveThread)
+                ? storedActiveThread
+                : parsedThreads[0].id
+            )
+            setHydrated(true)
+            return
+          }
+        }
+
+        const legacyRaw = localStorage.getItem(LEGACY_CHAT_STORAGE_KEY)
+        if (legacyRaw) {
+          const legacyMessages = JSON.parse(legacyRaw) as Array<
+            Omit<Message, "timestamp"> & { timestamp: string }
+          >
+          if (Array.isArray(legacyMessages) && legacyMessages.length > 0) {
+            const migrated = createThread("Previous Chat")
+            migrated.messages = legacyMessages.map((message) => ({
+              ...message,
+              timestamp: new Date(message.timestamp)
+            }))
+            migrated.updatedAt = new Date()
+            setThreads([migrated])
+            setActiveThreadId(migrated.id)
+            setHydrated(true)
+            return
+          }
+        }
+      } catch {
+        // Ignore malformed cache and regenerate below.
+      }
+
+      const initial = createThread()
+      setThreads([initial])
+      setActiveThreadId(initial.id)
+      setHydrated(true)
+    }
+
+    setHydrated(false)
+    if (remotePersistence) {
+      void hydrateRemoteThreads()
+    } else {
+      hydrateLocalThreads()
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeThreadStorageKey, remotePersistence, threadStorageKey])
 
   useEffect(() => {
     if (!hydrated) return
-    localStorage.setItem(threadStorageKey, JSON.stringify(toPersistedThreads(threads)))
     localStorage.setItem(activeThreadStorageKey, activeThreadId)
-  }, [activeThreadId, hydrated, threadStorageKey, activeThreadStorageKey, threads])
+    if (!remotePersistence) {
+      localStorage.setItem(threadStorageKey, JSON.stringify(toPersistedThreads(threads)))
+    }
+  }, [activeThreadId, activeThreadStorageKey, hydrated, remotePersistence, threadStorageKey, threads])
 
   useEffect(() => {
     if (!isLoading) {
@@ -780,15 +873,11 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     return () => mediaQuery.removeEventListener("change", syncSidebar)
   }, [isFullscreen])
 
-  function createNewThread() {
-    const thread = createThread()
-    setThreads((prev) => [thread, ...prev])
-    setActiveThreadId(thread.id)
-    setInputMessage("")
-    setOpenTraceId(null)
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      setSidebarOpen(false)
-    }
+  function upsertThread(thread: ChatThread) {
+    setThreads((prev) => {
+      const remaining = prev.filter((item) => item.id !== thread.id)
+      return [thread, ...remaining]
+    })
   }
 
   function updateThreadMessages(
@@ -809,20 +898,72 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     )
   }
 
-  function deleteThread(threadId: string) {
-    setThreads((prev) => {
-      if (prev.length === 1) {
-        const fresh = createThread()
-        setActiveThreadId(fresh.id)
-        return [fresh]
+  function createNewThread() {
+    void (async () => {
+      if (remotePersistence) {
+        try {
+          const thread = fromRemoteThread(await createAdvisorChat())
+          upsertThread(thread)
+          setActiveThreadId(thread.id)
+          setInputMessage("")
+          setOpenTraceId(null)
+          setSyncError("")
+        } catch (error) {
+          setSyncError(error instanceof Error ? error.message : "Unable to create a new chat.")
+          return
+        }
+      } else {
+        const thread = createThread()
+        setThreads((prev) => [thread, ...prev])
+        setActiveThreadId(thread.id)
+        setInputMessage("")
+        setOpenTraceId(null)
       }
 
-      const next = prev.filter((thread) => thread.id !== threadId)
-      if (threadId === activeThreadId && next.length > 0) {
-        setActiveThreadId(next[0].id)
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        setSidebarOpen(false)
       }
-      return next
-    })
+    })()
+  }
+
+  function deleteThread(threadId: string) {
+    void (async () => {
+      if (remotePersistence) {
+        try {
+          await deleteAdvisorChat(threadId)
+          const remaining = threads.filter((thread) => thread.id !== threadId)
+          if (remaining.length === 0) {
+            const replacement = fromRemoteThread(await createAdvisorChat())
+            setThreads([replacement])
+            setActiveThreadId(replacement.id)
+          } else {
+            setThreads(remaining)
+            if (threadId === activeThreadId) {
+              setActiveThreadId(remaining[0].id)
+            }
+          }
+          setSyncError("")
+          return
+        } catch (error) {
+          setSyncError(error instanceof Error ? error.message : "Unable to delete this chat.")
+          return
+        }
+      }
+
+      setThreads((prev) => {
+        if (prev.length === 1) {
+          const fresh = createThread()
+          setActiveThreadId(fresh.id)
+          return [fresh]
+        }
+
+        const next = prev.filter((thread) => thread.id !== threadId)
+        if (threadId === activeThreadId && next.length > 0) {
+          setActiveThreadId(next[0].id)
+        }
+        return next
+      })
+    })()
   }
 
   function openThread(threadId: string) {
@@ -838,10 +979,22 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
 
     let currentThreadId = activeThread?.id
     if (!currentThreadId) {
-      const thread = createThread()
-      setThreads((prev) => [thread, ...prev])
-      setActiveThreadId(thread.id)
-      currentThreadId = thread.id
+      if (remotePersistence) {
+        try {
+          const created = fromRemoteThread(await createAdvisorChat())
+          upsertThread(created)
+          setActiveThreadId(created.id)
+          currentThreadId = created.id
+        } catch (error) {
+          setSyncError(error instanceof Error ? error.message : "Unable to create a chat.")
+          return
+        }
+      } else {
+        const thread = createThread()
+        setThreads((prev) => [thread, ...prev])
+        setActiveThreadId(thread.id)
+        currentThreadId = thread.id
+      }
     }
 
     const userMessage: Message = {
@@ -859,27 +1012,33 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
     setLoadingThreadId(currentThreadId)
 
     try {
-      const agent = await getAgentAdvice(text)
-      const assistantMessage: Message = {
-        id: `a-${Date.now()}`,
-        role: "assistant",
-        content: agent.response,
-        timestamp: new Date(),
-        modelUsed: agent.model_used,
-        meta: {
-          intent: agent.intent,
-          usedTools: agent.used_tools,
-          toolSummaries: agent.tool_summaries,
-          knowledgeSources: agent.knowledge_sources,
-          webSources: agent.web_sources,
-          rag: agent.rag
+      if (remotePersistence) {
+        const remoteThread = await sendAdvisorChatMessage(currentThreadId, text)
+        upsertThread(fromRemoteThread(remoteThread))
+        setSyncError("")
+      } else {
+        const agent = await getAgentAdvice(text)
+        const assistantMessage: Message = {
+          id: `a-${Date.now()}`,
+          role: "assistant",
+          content: agent.response,
+          timestamp: new Date(),
+          modelUsed: agent.model_used,
+          meta: {
+            intent: agent.intent,
+            usedTools: agent.used_tools,
+            toolSummaries: agent.tool_summaries,
+            knowledgeSources: agent.knowledge_sources,
+            webSources: agent.web_sources,
+            rag: agent.rag
+          }
         }
-      }
 
-      updateThreadMessages(currentThreadId, (messages, existingTitle) => ({
-        messages: [...messages, assistantMessage],
-        title: existingTitle
-      }))
+        updateThreadMessages(currentThreadId, (messages, existingTitle) => ({
+          messages: [...messages, assistantMessage],
+          title: existingTitle
+        }))
+      }
     } catch (error) {
       const messageText = error instanceof Error ? error.message : "Unable to generate advice now."
 
@@ -896,6 +1055,9 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
         ],
         title: existingTitle
       }))
+      if (remotePersistence) {
+        setSyncError(messageText)
+      }
     } finally {
       setLoadingThreadId(null)
       inputRef.current?.focus()
@@ -912,6 +1074,12 @@ export function AIAdvisor({ userData, layout = "embedded", storageNamespace = "d
           : "w-full space-y-3"
       }
     >
+      {syncError ? (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          {syncError}
+        </div>
+      ) : null}
+
       {isFullscreen && sidebarOpen ? (
         <>
           <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)}>

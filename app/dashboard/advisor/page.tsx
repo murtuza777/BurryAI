@@ -63,6 +63,7 @@ export default function DashboardAdvisorPage() {
       <div className="min-h-0 flex-1 overflow-hidden">
         <AIAdvisor
           userData={advisorData}
+          accountId={user?.id ?? null}
           layout="fullscreen"
           storageNamespace={user?.id ?? (guestUser?.name ? `guest-${guestUser.name}` : 'guest')}
         />
