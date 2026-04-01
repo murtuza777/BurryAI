@@ -1068,7 +1068,7 @@ export function AIAdvisor({
     <div
       className={
         isFullscreen
-          ? `grid h-full min-h-0 grid-cols-1 gap-4 pb-[calc(env(safe-area-inset-bottom)+5.75rem)] md:pb-0 ${
+          ? `grid min-h-0 grid-cols-1 gap-3 overflow-hidden h-[calc(100svh-env(safe-area-inset-bottom)-6.5rem)] md:h-full md:gap-4 ${
               sidebarOpen ? "lg:grid-cols-[320px,minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)]"
             }`
           : "w-full space-y-3"
@@ -1135,7 +1135,7 @@ export function AIAdvisor({
         </div>
       ) : null}
 
-      <div className="min-h-0 min-w-0">
+      <div className="min-h-0 min-w-0 overflow-hidden">
         <AdvisorConversationPanel
           activeMessages={activeMessages}
           agentStep={agentStep}

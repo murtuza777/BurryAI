@@ -224,9 +224,9 @@ export default function DashboardOverviewPage() {
         <HolographicCard>
           <p className="flex items-center gap-2 text-sm text-slate-300">
             <CreditCard className="h-4 w-4 text-amber-300" />
-            Loan Payments
+            Loan Balance
           </p>
-          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">${summary.monthly_loan_payments.toLocaleString()}</p>
+          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">${summary.total_loan_balance.toLocaleString()}</p>
         </HolographicCard>
 
         <HolographicCard>
