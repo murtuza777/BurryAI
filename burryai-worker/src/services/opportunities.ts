@@ -464,6 +464,26 @@ function buildQueryPlans(params: {
     )
     pushQuery(
       plans,
+      `${params.query.trim()} site:remotive.com/remote-jobs OR site:jobspresso.co OR site:workingnomads.com`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${params.query.trim()} site:dynamitejobs.com OR site:flexjobs.com OR site:authenticjobs.com`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${params.query.trim()} site:glassdoor.com/Job OR site:ziprecruiter.com OR site:dice.com`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${params.query.trim()} site:builtin.com/jobs OR site:otta.com/jobs OR site:monster.com`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
       `${params.query.trim()} hiring site:reddit.com/r/forhire OR site:reddit.com/r/jobs OR site:news.ycombinator.com`,
       "hidden"
     )
@@ -486,6 +506,16 @@ function buildQueryPlans(params: {
     pushQuery(
       plans,
       `${role} ${skillHint} ${typeHints} ${locationHint} site:wellfound.com/jobs OR site:himalayas.app/jobs`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${role} ${skillHint} ${typeHints} ${locationHint} site:glassdoor.com/Job OR site:ziprecruiter.com OR site:dice.com`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${role} ${skillHint} ${typeHints} ${locationHint} site:builtin.com/jobs OR site:otta.com/jobs OR site:monster.com`,
       "hidden"
     )
     if (params.includeInternships) {
@@ -521,6 +551,16 @@ function buildQueryPlans(params: {
       `${role} remote ${skillHint} site:weworkremotely.com/remote-jobs OR site:remoteok.com`,
       "hidden"
     )
+    pushQuery(
+      plans,
+      `${role} remote ${skillHint} site:remotive.com/remote-jobs OR site:jobspresso.co OR site:workingnomads.com`,
+      "hidden"
+    )
+    pushQuery(
+      plans,
+      `${role} remote ${skillHint} site:dynamitejobs.com OR site:flexjobs.com OR site:authenticjobs.com`,
+      "hidden"
+    )
     if (params.includeFreelance) {
       pushQuery(
         plans,
@@ -541,7 +581,7 @@ function buildQueryPlans(params: {
   const hiddenAndDirect = uniqueStrings(
     plans.filter((plan) => plan.bucket !== "popular").map((plan) => `${plan.bucket}::${plan.query}`)
   )
-    .slice(0, 14)
+    .slice(0, 22)
     .map((value) => {
       const [bucket, ...parts] = value.split("::")
       return { bucket: bucket as QueryPlan["bucket"], query: parts.join("::") }
