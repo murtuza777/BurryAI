@@ -122,6 +122,18 @@ const PRIORITY_DISCOVERY_SOURCES = new Set([
   "Himalayas",
   "We Work Remotely",
   "Remote OK",
+  "Remotive",
+  "Jobspresso",
+  "Working Nomads",
+  "Dynamite Jobs",
+  "FlexJobs",
+  "Authentic Jobs",
+  "Glassdoor",
+  "ZipRecruiter",
+  "Dice",
+  "Monster",
+  "Built In",
+  "Otta",
   "Reddit",
   "X",
   "GitHub",
@@ -236,6 +248,18 @@ function prettifySourceSite(hostname: string): string {
   if (hostname.includes("himalayas.app")) return "Himalayas"
   if (hostname.includes("weworkremotely.com")) return "We Work Remotely"
   if (hostname.includes("remoteok.com")) return "Remote OK"
+  if (hostname.includes("remotive.com")) return "Remotive"
+  if (hostname.includes("jobspresso.co")) return "Jobspresso"
+  if (hostname.includes("workingnomads.com")) return "Working Nomads"
+  if (hostname.includes("dynamitejobs.com")) return "Dynamite Jobs"
+  if (hostname.includes("flexjobs.com")) return "FlexJobs"
+  if (hostname.includes("authenticjobs.com")) return "Authentic Jobs"
+  if (hostname.includes("glassdoor.com")) return "Glassdoor"
+  if (hostname.includes("ziprecruiter.com")) return "ZipRecruiter"
+  if (hostname.includes("dice.com")) return "Dice"
+  if (hostname.includes("monster.com")) return "Monster"
+  if (hostname.includes("builtin.com")) return "Built In"
+  if (hostname.includes("otta.com")) return "Otta"
   if (hostname.includes("reddit.com")) return "Reddit"
   if (hostname.includes("x.com") || hostname.includes("twitter.com")) return "X"
   if (hostname.includes("github.com")) return "GitHub"
@@ -310,6 +334,42 @@ function classifySource(params: {
     return { sourceSite, listingQuality: "high" }
   }
   if (hostname.includes("remoteok.com") && pathname.length > 1) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("glassdoor.com") && pathname.includes("/job")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("ziprecruiter.com") && (pathname.includes("/job") || pathname.includes("/clk"))) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("dice.com") && pathname.includes("/job")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("monster.com") && pathname.includes("/job")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("builtin.com") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("otta.com") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("remotive.com") && pathname.includes("/remote-jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("jobspresso.co") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("workingnomads.com") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("dynamitejobs.com") && pathname.includes("/job")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("flexjobs.com") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("authenticjobs.com") && pathname.includes("/jobs")) {
     return { sourceSite, listingQuality: "high" }
   }
   if (hostname.includes("ycombinator.com") && pathname.includes("/jobs/")) {
