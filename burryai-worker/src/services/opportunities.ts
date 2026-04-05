@@ -874,7 +874,7 @@ export async function discoverOpportunities(params: {
   const includeFreelance = params.input.include_freelance ?? true
   const remoteRegions = compactTokenList(params.input.remote_regions ?? profile.remote_regions)
   const radiusKm = Math.max(1, Math.min(params.input.radius_km ?? profile.opportunity_radius_km, 500))
-  const maxResults = Math.max(6, Math.min(params.input.max_results ?? 30, 48))
+  const maxResults = Math.max(6, Math.min(params.input.max_results ?? 42, 60))
   const requestedMode: ResolvedMode =
     params.input.mode === "auto" || !params.input.mode
       ? profile.preferred_work_mode
@@ -913,7 +913,10 @@ export async function discoverOpportunities(params: {
     radiusKm
   })
   const queries = queryPlans.map((plan) => plan.query)
-  const perQueryTopK = Math.max(5, Math.min(8, Math.ceil(maxResults / Math.max(1, Math.min(queries.length, 8))) + 2))
+  const perQueryTopK = Math.max(
+    5,
+    Math.min(9, Math.ceil(maxResults / Math.max(1, Math.min(queries.length, 12))) + 2)
+  )
 
   const batches = await Promise.all(
     queries.map((query) =>

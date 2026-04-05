@@ -78,6 +78,17 @@ describe("Opportunities route", () => {
       sourceSite: "Hacker News",
       listingQuality: "community"
     })
+
+    expect(
+      opportunitiesPrivate.classifySource({
+        url: "https://remotive.com/remote-jobs/software-engineer-123",
+        text: "remote software engineer hiring full-time",
+        university: ""
+      })
+    ).toEqual({
+      sourceSite: "Remotive",
+      listingQuality: "high"
+    })
   })
 
   it("prioritizes niche and direct sources above mainstream boards", () => {
@@ -119,6 +130,8 @@ describe("Opportunities route", () => {
     expect(plans.some((plan: { query: string }) => plan.query.includes("news.ycombinator.com"))).toBe(true)
     expect(plans.some((plan: { query: string }) => plan.query.includes("github.com"))).toBe(true)
     expect(plans.some((plan: { query: string }) => plan.query.includes("himalayas.app/jobs"))).toBe(true)
+    expect(plans.some((plan: { query: string }) => plan.query.includes("remotive.com"))).toBe(true)
+    expect(plans.some((plan: { query: string }) => plan.query.includes("glassdoor.com"))).toBe(true)
     expect(plans.slice(firstPopularIndex).every((plan: { bucket: string }) => plan.bucket === "popular")).toBe(true)
   })
 

@@ -13,7 +13,7 @@ const opportunitySearchSchema = z
     include_freelance: z.boolean().optional(),
     remote_regions: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
     radius_km: z.coerce.number().int().min(1).max(500).optional(),
-    max_results: z.coerce.number().int().min(6).max(48).optional()
+    max_results: z.coerce.number().int().min(6).max(60).optional()
   })
   .strict()
 

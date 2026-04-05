@@ -43,7 +43,7 @@ const MODE_OPTIONS: Array<{ value: ModeFilter; label: string; icon: typeof MapPi
 ]
 
 const RADIUS_OPTIONS = [10, 25, 50, 100]
-const RESULT_OPTIONS = [18, 30, 42]
+const RESULT_OPTIONS = [24, 42, 60]
 const SOURCE_BUCKET_ORDER: SourceBucket[] = ['hidden', 'direct', 'standard', 'popular']
 const SOURCE_BUCKET_LABELS: Record<SourceBucket, { title: string; description: string }> = {
   hidden: {
@@ -146,7 +146,7 @@ export default function DashboardOpportunitiesPage() {
     includePartTime: true,
     includeFreelance: false,
     radiusKm: 25,
-    maxResults: 30
+    maxResults: 42
   })
 
   useEffect(() => {
@@ -195,7 +195,7 @@ export default function DashboardOpportunitiesPage() {
             include_freelance: false,
             remote_regions: fromCsv(nextDraft.remoteRegionsCsv),
             radius_km: Number(nextDraft.radiusKm || 25),
-            max_results: 30
+            max_results: 42
           })
           setSearchResult(payload)
         } else {
@@ -245,7 +245,7 @@ export default function DashboardOpportunitiesPage() {
         include_freelance: filters.includeFreelance,
         remote_regions: remoteRegions,
         radius_km: Number(filters.radiusKm || 25),
-        max_results: Number(filters.maxResults || 30),
+        max_results: Number(filters.maxResults || 42),
         ...overrides
       })
       setSearchResult(payload)
