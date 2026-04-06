@@ -95,7 +95,15 @@ const COMMUNITY_PATHS = [
   "/r/slavelabour/",
   "/r/jobs/",
   "/r/hiring/",
-  "/r/internships/"
+  "/r/internships/",
+  "/r/remotework/",
+  "/r/cscareerquestions/",
+  "/r/techjobs/",
+  "/r/webdev/",
+  "/r/freelance/",
+  "/r/startups/",
+  "/r/jobbit/",
+  "/r/workonline/"
 ]
 
 const ARTICLE_TERMS = /\b(best|top|guide|tips|how to|course|video|blog|review)\b/i
@@ -137,7 +145,32 @@ const PRIORITY_DISCOVERY_SOURCES = new Set([
   "Reddit",
   "X",
   "GitHub",
-  "Hacker News"
+  "Hacker News",
+  "Stack Overflow",
+  "Dribbble",
+  "Behance",
+  "Arc.dev",
+  "Toptal",
+  "JustRemote",
+  "Remote.co",
+  "PowerToFly",
+  "JrDevJobs",
+  "Nodesk",
+  "SimplyHired",
+  "CareerBuilder",
+  "USAJobs",
+  "Naukri",
+  "dev.to",
+  "Elpha",
+  "Gun.io",
+  "Lemon.io",
+  "AngelList",
+  "Pangian",
+  "Hired",
+  "Triplebyte",
+  "Remote Leaf",
+  "NoDesk",
+  "Outsourcely"
 ])
 
 const POPULAR_BOARDS = new Set(["LinkedIn", "Indeed"])
@@ -267,6 +300,30 @@ function prettifySourceSite(hostname: string): string {
   if (hostname.includes("internshala.com")) return "Internshala"
   if (hostname.includes("ycombinator.com")) return "Y Combinator"
   if (hostname.endsWith(".edu")) return "Campus"
+  if (hostname.includes("stackoverflow.com") || hostname.includes("stackoverflowbusiness.com")) return "Stack Overflow"
+  if (hostname.includes("dribbble.com")) return "Dribbble"
+  if (hostname.includes("behance.net")) return "Behance"
+  if (hostname.includes("arc.dev")) return "Arc.dev"
+  if (hostname.includes("toptal.com")) return "Toptal"
+  if (hostname.includes("justremote.co")) return "JustRemote"
+  if (hostname.includes("remote.co")) return "Remote.co"
+  if (hostname.includes("powertofly.com")) return "PowerToFly"
+  if (hostname.includes("jrdevjobs.com")) return "JrDevJobs"
+  if (hostname.includes("nodesk.co")) return "Nodesk"
+  if (hostname.includes("simplyhired.com")) return "SimplyHired"
+  if (hostname.includes("careerbuilder.com")) return "CareerBuilder"
+  if (hostname.includes("usajobs.gov")) return "USAJobs"
+  if (hostname.includes("naukri.com")) return "Naukri"
+  if (hostname.includes("dev.to")) return "dev.to"
+  if (hostname.includes("elpha.com")) return "Elpha"
+  if (hostname.includes("gun.io")) return "Gun.io"
+  if (hostname.includes("lemon.io")) return "Lemon.io"
+  if (hostname.includes("angel.co") || hostname.includes("angellist.com")) return "AngelList"
+  if (hostname.includes("pangian.com")) return "Pangian"
+  if (hostname.includes("hired.com")) return "Hired"
+  if (hostname.includes("triplebyte.com")) return "Triplebyte"
+  if (hostname.includes("remoteleaf.com")) return "Remote Leaf"
+  if (hostname.includes("outsourcely.com")) return "Outsourcely"
 
   return hostname.replace(/^www\./, "").split(".")[0] || "Website"
 }
@@ -400,6 +457,78 @@ function classifySource(params: {
     (params.text.includes("who is hiring") || LISTING_TERMS.test(params.text))
   ) {
     return { sourceSite, listingQuality: "community" }
+  }
+  if (hostname.includes("stackoverflow.com") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("dribbble.com") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("behance.net") && pathname.includes("/joblist")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("arc.dev") && (pathname.includes("/remote-jobs") || pathname.includes("/jobs"))) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("toptal.com") && pathname.includes("/freelance-jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("justremote.co") && pathname.includes("/remote")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("remote.co") && pathname.includes("/remote-jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("powertofly.com") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("jrdevjobs.com")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("nodesk.co") && pathname.includes("/remote-jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("simplyhired.com") && pathname.includes("/job")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("careerbuilder.com") && pathname.includes("/job")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("usajobs.gov")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("naukri.com") && (pathname.includes("/job-listings") || pathname.includes("/jobs"))) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("dev.to") && LISTING_TERMS.test(params.text)) {
+    return { sourceSite, listingQuality: "community" }
+  }
+  if (hostname.includes("elpha.com") && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("gun.io")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("lemon.io")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if ((hostname.includes("angel.co") || hostname.includes("angellist.com")) && pathname.includes("/jobs")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("pangian.com") && pathname.includes("/job")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("hired.com")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("triplebyte.com")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("remoteleaf.com")) {
+    return { sourceSite, listingQuality: "high" }
+  }
+  if (hostname.includes("outsourcely.com") && pathname.includes("/remote-jobs")) {
+    return { sourceSite, listingQuality: "high" }
   }
 
   const careerPath = /\/(careers?|jobs?|openings?|positions?|internships?|join-us|vacancies)/.test(pathname)
@@ -641,7 +770,7 @@ function buildQueryPlans(params: {
   const hiddenAndDirect = uniqueStrings(
     plans.filter((plan) => plan.bucket !== "popular").map((plan) => `${plan.bucket}::${plan.query}`)
   )
-    .slice(0, 22)
+    .slice(0, 30)
     .map((value) => {
       const [bucket, ...parts] = value.split("::")
       return { bucket: bucket as QueryPlan["bucket"], query: parts.join("::") }
