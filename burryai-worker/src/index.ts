@@ -11,6 +11,7 @@ import { requestContext, getMetricsSnapshot } from "./middleware/request-context
 import { createRateLimit } from "./middleware/rate-limit"
 import profileRoutes from "./routes/profile"
 import opportunitiesRoutes from "./routes/opportunities"
+import resumeRoutes from "./routes/resume"
 import type { AppEnv } from "./types"
 
 const app = new Hono<AppEnv>()
@@ -77,6 +78,10 @@ app.use("/opportunities/*", agentRateLimit)
 app.use("/api/opportunities/*", agentRateLimit)
 app.route("/opportunities", opportunitiesRoutes)
 app.route("/api/opportunities", opportunitiesRoutes)
+app.use("/resume/*", agentRateLimit)
+app.use("/api/resume/*", agentRateLimit)
+app.route("/resume", resumeRoutes)
+app.route("/api/resume", resumeRoutes)
 app.use("/agent/*", agentRateLimit)
 app.use("/api/agent/*", agentRateLimit)
 app.route("/agent", agentRoutes)
