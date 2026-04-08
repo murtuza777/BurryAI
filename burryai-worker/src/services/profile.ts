@@ -14,6 +14,8 @@ export type UserProfileRow = {
   opportunity_radius_km: number | null
   min_hourly_rate: number | null
   onboarding_completed: number
+  resume_summary: string | null
+  resume_text: string | null
 }
 
 export type FinancialProfileRow = {
@@ -43,6 +45,8 @@ export type FullProfile = {
   currency: string
   savings_goal: number
   risk_tolerance: "low" | "moderate" | "high"
+  resume_summary: string
+  resume_text: string
 }
 
 export type ProfileUpdateInput = Partial<{
@@ -64,6 +68,8 @@ export type ProfileUpdateInput = Partial<{
   currency: string
   savings_goal: number
   risk_tolerance: "low" | "moderate" | "high"
+  resume_summary: string
+  resume_text: string
 }>
 
 const PROFILE_DEFAULTS: FullProfile = {
@@ -84,7 +90,9 @@ const PROFILE_DEFAULTS: FullProfile = {
   monthly_income: 0,
   currency: "USD",
   savings_goal: 0,
-  risk_tolerance: "moderate"
+  risk_tolerance: "moderate",
+  resume_summary: "",
+  resume_text: ""
 }
 
 function parseJsonArray(input: string | null | undefined): string[] {
@@ -105,7 +113,7 @@ function parseJsonArray(input: string | null | undefined): string[] {
 export async function getFullProfile(db: D1Database, userId: string): Promise<FullProfile> {
   const [userProfile, financialProfile] = await Promise.all([
     db.prepare(
-      "SELECT user_id, full_name, country, student_status, university, profession, skills_json, other_talents_json, preferred_work_mode, city, state_region, remote_regions_json, opportunity_radius_km, min_hourly_rate, onboarding_completed FROM user_profiles WHERE user_id = ?1 LIMIT 1"
+      "SELECT user_id, full_name, country, student_status, university, profession, skills_json, other_talents_json, preferred_work_mode, city, state_region, remote_regions_json, opportunity_radius_km, min_hourly_rate, onboarding_completed, resume_summary, resume_text FROM user_profiles WHERE user_id = ?1 LIMIT 1"
     )
       .bind(userId)
       .first<UserProfileRow>(),
@@ -135,7 +143,9 @@ export async function getFullProfile(db: D1Database, userId: string): Promise<Fu
     monthly_income: financialProfile?.monthly_income ?? PROFILE_DEFAULTS.monthly_income,
     currency: financialProfile?.currency ?? PROFILE_DEFAULTS.currency,
     savings_goal: financialProfile?.savings_goal ?? PROFILE_DEFAULTS.savings_goal,
-    risk_tolerance: financialProfile?.risk_tolerance ?? PROFILE_DEFAULTS.risk_tolerance
+    risk_tolerance: financialProfile?.risk_tolerance ?? PROFILE_DEFAULTS.risk_tolerance,
+    resume_summary: userProfile?.resume_summary ?? PROFILE_DEFAULTS.resume_summary,
+    resume_text: userProfile?.resume_text ?? PROFILE_DEFAULTS.resume_text
   }
 }
 
@@ -162,7 +172,7 @@ export async function updateFullProfile(
         merged.risk_tolerance
       ),
     db.prepare(
-      "INSERT INTO user_profiles (user_id, full_name, country, student_status, university, profession, skills_json, other_talents_json, preferred_work_mode, city, state_region, remote_regions_json, opportunity_radius_km, min_hourly_rate, onboarding_completed) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15) ON CONFLICT(user_id) DO UPDATE SET full_name = excluded.full_name, country = excluded.country, student_status = excluded.student_status, university = excluded.university, profession = excluded.profession, skills_json = excluded.skills_json, other_talents_json = excluded.other_talents_json, preferred_work_mode = excluded.preferred_work_mode, city = excluded.city, state_region = excluded.state_region, remote_regions_json = excluded.remote_regions_json, opportunity_radius_km = excluded.opportunity_radius_km, min_hourly_rate = excluded.min_hourly_rate, onboarding_completed = excluded.onboarding_completed"
+      "INSERT INTO user_profiles (user_id, full_name, country, student_status, university, profession, skills_json, other_talents_json, preferred_work_mode, city, state_region, remote_regions_json, opportunity_radius_km, min_hourly_rate, onboarding_completed, resume_summary, resume_text) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17) ON CONFLICT(user_id) DO UPDATE SET full_name = excluded.full_name, country = excluded.country, student_status = excluded.student_status, university = excluded.university, profession = excluded.profession, skills_json = excluded.skills_json, other_talents_json = excluded.other_talents_json, preferred_work_mode = excluded.preferred_work_mode, city = excluded.city, state_region = excluded.state_region, remote_regions_json = excluded.remote_regions_json, opportunity_radius_km = excluded.opportunity_radius_km, min_hourly_rate = excluded.min_hourly_rate, onboarding_completed = excluded.onboarding_completed, resume_summary = excluded.resume_summary, resume_text = excluded.resume_text"
     )
       .bind(
         userId,
@@ -179,7 +189,9 @@ export async function updateFullProfile(
         JSON.stringify(merged.remote_regions),
         merged.opportunity_radius_km,
         merged.min_hourly_rate,
-        merged.onboarding_completed ? 1 : 0
+        merged.onboarding_completed ? 1 : 0,
+        merged.resume_summary || null,
+        merged.resume_text || null
       )
   ])
 

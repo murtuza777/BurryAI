@@ -28,6 +28,8 @@ export interface FinancialProfile {
   currency: string
   savings_goal: number
   risk_tolerance: RiskTolerance
+  resume_summary: string
+  resume_text: string
 }
 
 export interface FinancialSummary {
@@ -528,6 +530,52 @@ export async function searchOpportunities(
   })
   if (!response.ok) throw new Error(await parseError(response))
   return (await response.json()) as OpportunitySearchResponse
+}
+
+export interface ResumeExtraction {
+  full_name: string
+  profession: string
+  skills: string[]
+  other_talents: string[]
+  city: string
+  state_region: string
+  country: string
+  university: string
+  student_status: string
+  preferred_work_mode: WorkMode
+  resume_summary: string
+}
+
+export interface ResumeParseResponse {
+  extraction: ResumeExtraction
+  profile_update: Partial<FinancialProfile>
+}
+
+export async function parseResume(text: string): Promise<ResumeParseResponse> {
+  const response = await apiRequest("resume/parse", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ text })
+  })
+  if (!response.ok) throw new Error(await parseError(response))
+  return (await response.json()) as ResumeParseResponse
+}
+
+export async function applyResumeProfile(
+  data: Partial<FinancialProfile> & { resume_text?: string }
+): Promise<FinancialProfile> {
+  const response = await apiRequest("resume/apply", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  })
+  if (!response.ok) throw new Error(await parseError(response))
+  const payload = (await response.json()) as { profile: FinancialProfile }
+  return payload.profile
 }
 
 export async function deleteExpense(id: string): Promise<void> {

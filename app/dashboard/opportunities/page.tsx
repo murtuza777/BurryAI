@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowRight,
@@ -20,12 +20,14 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import ResumeUpload from '@/components/dashboard/features/ResumeUpload'
 import FinanceLoader from '@/components/ui/FinanceLoader'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   getFinancialProfile,
   searchOpportunities,
+  type FinancialProfile,
   type OpportunitySearchInput,
   type OpportunitySearchResponse,
   type WorkMode
@@ -34,6 +36,20 @@ import { cn } from '@/lib/utils'
 
 type ModeFilter = 'auto' | WorkMode
 type SourceBucket = OpportunitySearchResponse['opportunities'][number]['source_bucket']
+type OpportunityProfileDraft = {
+  profession: string
+  skillsCsv: string
+  talentsCsv: string
+  preferredMode: WorkMode
+  city: string
+  stateRegion: string
+  country: string
+  remoteRegionsCsv: string
+  radiusKm: number
+  minHourlyRate: number
+  resumeSummary: string
+  resumeText: string
+}
 
 const MODE_OPTIONS: Array<{ value: ModeFilter; label: string; icon: typeof MapPin }> = [
   { value: 'auto', label: 'Smart Match', icon: Sparkles },
@@ -63,6 +79,20 @@ const SOURCE_BUCKET_LABELS: Record<SourceBucket, { title: string; description: s
     description: 'LinkedIn and Indeed fallback listings kept lower so hidden matches show first.'
   }
 }
+const EMPTY_PROFILE_DRAFT: OpportunityProfileDraft = {
+  profession: '',
+  skillsCsv: '',
+  talentsCsv: '',
+  preferredMode: 'hybrid',
+  city: '',
+  stateRegion: '',
+  country: '',
+  remoteRegionsCsv: '',
+  radiusKm: 25,
+  minHourlyRate: 0,
+  resumeSummary: '',
+  resumeText: ''
+}
 
 function toCsv(items: string[]): string {
   return items.join(', ')
@@ -88,6 +118,59 @@ function isOpportunityProfileConfigured(params: {
     params.profession.trim().length > 0 &&
       (params.skillsCsv.trim().length > 0 || params.talentsCsv.trim().length > 0)
   )
+}
+
+function buildOpportunityProfileDraft(profile: FinancialProfile): OpportunityProfileDraft {
+  return {
+    profession: profile.profession || '',
+    skillsCsv: toCsv(profile.skills || []),
+    talentsCsv: toCsv(profile.other_talents || []),
+    preferredMode: profile.preferred_work_mode || 'hybrid',
+    city: profile.city || '',
+    stateRegion: profile.state_region || '',
+    country: profile.country || '',
+    remoteRegionsCsv: toCsv(profile.remote_regions || []),
+    radiusKm: profile.opportunity_radius_km || 25,
+    minHourlyRate: profile.min_hourly_rate || 0,
+    resumeSummary: profile.resume_summary || '',
+    resumeText: profile.resume_text || ''
+  }
+}
+
+function hasResumeUploaded(draft: Pick<OpportunityProfileDraft, 'resumeSummary' | 'resumeText'>): boolean {
+  return draft.resumeSummary.trim().length > 0 || draft.resumeText.trim().length > 0
+}
+
+function getAiMatchMeta(score: number) {
+  if (score >= 120) {
+    return {
+      label: 'Top fit',
+      badgeClass: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100',
+      scoreClass: 'text-emerald-200'
+    }
+  }
+
+  if (score >= 95) {
+    return {
+      label: 'Strong fit',
+      badgeClass: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-100',
+      scoreClass: 'text-cyan-200'
+    }
+  }
+
+  if (score >= 75) {
+    return {
+      label: 'Good fit',
+      badgeClass: 'border-violet-400/30 bg-violet-400/10 text-violet-100',
+      scoreClass: 'text-violet-200'
+    }
+  }
+
+  return {
+    label: 'Potential fit',
+    badgeClass: 'border-amber-400/30 bg-amber-400/10 text-amber-100',
+    scoreClass: 'text-amber-200'
+  }
 }
 
 function ToggleButton(props: {
@@ -126,18 +209,7 @@ export default function DashboardOpportunitiesPage() {
   const [error, setError] = useState('')
   const [searchResult, setSearchResult] = useState<OpportunitySearchResponse | null>(null)
 
-  const [profileDraft, setProfileDraft] = useState({
-    profession: '',
-    skillsCsv: '',
-    talentsCsv: '',
-    preferredMode: 'hybrid' as WorkMode,
-    city: '',
-    stateRegion: '',
-    country: '',
-    remoteRegionsCsv: '',
-    radiusKm: 25,
-    minHourlyRate: 0
-  })
+  const [profileDraft, setProfileDraft] = useState<OpportunityProfileDraft>(EMPTY_PROFILE_DRAFT)
 
   const [filters, setFilters] = useState({
     query: '',
@@ -148,6 +220,110 @@ export default function DashboardOpportunitiesPage() {
     radiusKm: 25,
     maxResults: 42
   })
+
+  const hydrateProfileDraft = useCallback((profile: FinancialProfile) => {
+    const nextDraft = buildOpportunityProfileDraft(profile)
+    setProfileDraft(nextDraft)
+    setFilters((prev) => ({
+      ...prev,
+      radiusKm: profile.opportunity_radius_km || 25
+    }))
+    return nextDraft
+  }, [])
+
+  const refreshProfileDraft = useCallback(async () => {
+    const profile = await getFinancialProfile()
+    return hydrateProfileDraft(profile)
+  }, [hydrateProfileDraft])
+
+  const runSearchWithDraft = useCallback(
+    async (draft: OpportunityProfileDraft, overrides?: Partial<OpportunitySearchInput>) => {
+      if (
+        isGuest ||
+        !isOpportunityProfileConfigured({
+          profession: draft.profession,
+          skillsCsv: draft.skillsCsv,
+          talentsCsv: draft.talentsCsv
+        })
+      ) {
+        return null
+      }
+
+      setSearching(true)
+      setError('')
+      try {
+        const payload = await searchOpportunities({
+          query: filters.query.trim() || undefined,
+          mode: filters.mode,
+          include_internships: filters.includeInternships,
+          include_part_time: filters.includePartTime,
+          include_freelance: filters.includeFreelance,
+          remote_regions: fromCsv(draft.remoteRegionsCsv),
+          radius_km: Number(filters.radiusKm || draft.radiusKm || 25),
+          max_results: Number(filters.maxResults || 42),
+          ...overrides
+        })
+        setSearchResult(payload)
+        return payload
+      } catch (searchError) {
+        const message = searchError instanceof Error ? searchError.message : 'Failed to search opportunities'
+        setError(message)
+        throw searchError instanceof Error ? searchError : new Error(message)
+      } finally {
+        setSearching(false)
+      }
+    },
+    [filters, isGuest]
+  )
+
+  const runSearch = useCallback(
+    async (overrides?: Partial<OpportunitySearchInput>) => {
+      try {
+        return await runSearchWithDraft(profileDraft, overrides)
+      } catch {
+        return null
+      }
+    },
+    [profileDraft, runSearchWithDraft]
+  )
+
+  const handleResumeApplied = useCallback(
+    async (updatedProfile: FinancialProfile) => {
+      const fallbackDraft = hydrateProfileDraft(updatedProfile)
+      let nextDraft = fallbackDraft
+
+      try {
+        nextDraft = await refreshProfileDraft()
+      } catch (refreshError) {
+        setError(
+          refreshError instanceof Error
+            ? `${refreshError.message} Profile was updated, but the latest draft could not be reloaded.`
+            : 'Profile updated, but the latest draft could not be reloaded.'
+        )
+      }
+
+      if (
+        !isOpportunityProfileConfigured({
+          profession: nextDraft.profession,
+          skillsCsv: nextDraft.skillsCsv,
+          talentsCsv: nextDraft.talentsCsv
+        })
+      ) {
+        setSearchResult(null)
+        return
+      }
+
+      try {
+        await runSearchWithDraft(nextDraft, {
+          remote_regions: fromCsv(nextDraft.remoteRegionsCsv),
+          radius_km: Number(nextDraft.radiusKm || 25)
+        })
+      } catch {
+        // Preserve the successful resume apply even if follow-up search fails.
+      }
+    },
+    [hydrateProfileDraft, refreshProfileDraft, runSearchWithDraft]
+  )
 
   useEffect(() => {
     if (authLoading) return
@@ -160,26 +336,7 @@ export default function DashboardOpportunitiesPage() {
       setLoading(true)
       setError('')
       try {
-        const profile = await getFinancialProfile()
-        const nextDraft = {
-          profession: profile.profession || '',
-          skillsCsv: toCsv(profile.skills || []),
-          talentsCsv: toCsv(profile.other_talents || []),
-          preferredMode: profile.preferred_work_mode || 'hybrid',
-          city: profile.city || '',
-          stateRegion: profile.state_region || '',
-          country: profile.country || '',
-          remoteRegionsCsv: toCsv(profile.remote_regions || []),
-          radiusKm: profile.opportunity_radius_km || 25,
-          minHourlyRate: profile.min_hourly_rate || 0
-        }
-
-        setProfileDraft(nextDraft)
-        setFilters((prev) => ({
-          ...prev,
-          radiusKm: profile.opportunity_radius_km || 25
-        }))
-
+        const nextDraft = await refreshProfileDraft()
         if (
           isOpportunityProfileConfigured({
             profession: nextDraft.profession,
@@ -187,8 +344,8 @@ export default function DashboardOpportunitiesPage() {
             talentsCsv: nextDraft.talentsCsv
           })
         ) {
-          setSearching(true)
-          const payload = await searchOpportunities({
+          await runSearchWithDraft(nextDraft, {
+            query: undefined,
             mode: 'auto',
             include_internships: true,
             include_part_time: true,
@@ -197,20 +354,18 @@ export default function DashboardOpportunitiesPage() {
             radius_km: Number(nextDraft.radiusKm || 25),
             max_results: 42
           })
-          setSearchResult(payload)
         } else {
           setSearchResult(null)
         }
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Failed to load profile defaults')
       } finally {
-        setSearching(false)
         setLoading(false)
       }
     }
 
     void run()
-  }, [authLoading, isGuest])
+  }, [authLoading, isGuest, refreshProfileDraft, runSearchWithDraft])
 
   const remoteRegions = useMemo(() => fromCsv(profileDraft.remoteRegionsCsv), [profileDraft.remoteRegionsCsv])
   const groupedResults = useMemo(() => {
@@ -230,31 +385,10 @@ export default function DashboardOpportunitiesPage() {
       }),
     [profileDraft.profession, profileDraft.skillsCsv, profileDraft.talentsCsv]
   )
-
-  async function runSearch(overrides?: Partial<OpportunitySearchInput>) {
-    if (isGuest || !hasSavedOpportunityProfile) return
-
-    setSearching(true)
-    setError('')
-    try {
-      const payload = await searchOpportunities({
-        query: filters.query.trim() || undefined,
-        mode: filters.mode,
-        include_internships: filters.includeInternships,
-        include_part_time: filters.includePartTime,
-        include_freelance: filters.includeFreelance,
-        remote_regions: remoteRegions,
-        radius_km: Number(filters.radiusKm || 25),
-        max_results: Number(filters.maxResults || 42),
-        ...overrides
-      })
-      setSearchResult(payload)
-    } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : 'Failed to search opportunities')
-    } finally {
-      setSearching(false)
-    }
-  }
+  const hasResumeOnFile = useMemo(
+    () => hasResumeUploaded(profileDraft),
+    [profileDraft.resumeSummary, profileDraft.resumeText]
+  )
 
   if (authLoading || loading) {
     return <FinanceLoader />
@@ -298,6 +432,16 @@ export default function DashboardOpportunitiesPage() {
                 Add your role + skills in <span className="text-slate-100">Profile details</span>.
               </p>
             )}
+            <Badge
+              className={cn(
+                'border text-xs',
+                hasResumeOnFile
+                  ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100'
+                  : 'border-amber-400/30 bg-amber-400/10 text-amber-100'
+              )}
+            >
+              {hasResumeOnFile ? 'Resume on file' : 'Resume recommended'}
+            </Badge>
           </div>
 
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
@@ -334,9 +478,16 @@ export default function DashboardOpportunitiesPage() {
                   Your saved Profile details power matching: role + skills + location + work mode.
                 </li>
                 <li>
+                  Upload a resume here to extract skills, profession, location, and a short AI summary without leaving this page.
+                </li>
+                <li>
                   Status:{" "}
-                  <span className={hasSavedOpportunityProfile ? "text-emerald-200" : "text-amber-200"}>
-                    {hasSavedOpportunityProfile ? "Profile saved" : "Profile needed"}
+                  <span className={hasSavedOpportunityProfile ? 'text-emerald-200' : 'text-amber-200'}>
+                    {hasSavedOpportunityProfile ? 'Profile saved' : 'Profile needed'}
+                  </span>
+                  {' '}| Resume:{" "}
+                  <span className={hasResumeOnFile ? 'text-emerald-200' : 'text-amber-200'}>
+                    {hasResumeOnFile ? 'Uploaded' : 'Not uploaded'}
                   </span>
                 </li>
               </ul>
@@ -344,7 +495,20 @@ export default function DashboardOpportunitiesPage() {
           </div>
         ) : null}
 
+        {hasResumeOnFile && profileDraft.resumeSummary ? (
+          <div className="mt-3 rounded-2xl border border-slate-800/80 bg-slate-950/55 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Resume Summary</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{profileDraft.resumeSummary}</p>
+          </div>
+        ) : null}
       </section>
+
+      <ResumeUpload
+        onProfileApplied={handleResumeApplied}
+        hasExistingResume={hasResumeOnFile}
+        existingSummary={profileDraft.resumeSummary}
+        isGuest={isGuest}
+      />
 
       <section className="rounded-[1.25rem] border border-cyan-500/20 bg-slate-950/60 px-3 py-3 shadow-[0_12px_34px_rgba(2,6,23,0.3)]">
         <div className="flex flex-col gap-2.5 lg:flex-row">
@@ -531,96 +695,108 @@ export default function DashboardOpportunitiesPage() {
                 </div>
 
                 <div className="grid gap-4">
-                  {group.items.map((item) => (
-                    <article
-                      key={item.id}
-                      className="group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.92))] p-5 transition hover:border-cyan-400/40 hover:shadow-[0_14px_40px_rgba(14,165,233,0.1)]"
-                    >
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.07),transparent_30%)] opacity-0 transition group-hover:opacity-100" />
-                      <div className="relative">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                          <div className="max-w-3xl">
-                            <div className="flex flex-wrap gap-2">
-                              <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
-                                {item.source_site}
-                              </Badge>
-                              <Badge className="border-slate-700 bg-slate-900 text-slate-200 capitalize">
-                                {item.listing_quality}
-                              </Badge>
-                              {item.near_user_location ? (
-                                <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-100">
-                                  Nearby match
+                  {group.items.map((item) => {
+                    const aiMatch = getAiMatchMeta(item.score)
+
+                    return (
+                      <article
+                        key={item.id}
+                        className="group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.92))] p-5 transition hover:border-cyan-400/40 hover:shadow-[0_14px_40px_rgba(14,165,233,0.1)]"
+                      >
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.07),transparent_30%)] opacity-0 transition group-hover:opacity-100" />
+                        <div className="relative">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div className="max-w-3xl">
+                              <div className="flex flex-wrap gap-2">
+                                <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
+                                  {item.source_site}
                                 </Badge>
-                              ) : null}
-                              {item.remote_friendly ? (
-                                <Badge className="border-sky-400/30 bg-sky-400/10 text-sky-100">
-                                  Remote-friendly
+                                <Badge className={cn('capitalize', aiMatch.badgeClass)}>
+                                  AI Match: {aiMatch.label}
                                 </Badge>
-                              ) : null}
+                                <Badge className="border-slate-700 bg-slate-900 text-slate-200 capitalize">
+                                  {item.listing_quality}
+                                </Badge>
+                                {item.near_user_location ? (
+                                  <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-100">
+                                    Nearby match
+                                  </Badge>
+                                ) : null}
+                                {item.remote_friendly ? (
+                                  <Badge className="border-sky-400/30 bg-sky-400/10 text-sky-100">
+                                    Remote-friendly
+                                  </Badge>
+                                ) : null}
+                              </div>
+
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-3 inline-flex items-start gap-2 text-xl font-semibold text-slate-50 transition hover:text-cyan-200"
+                              >
+                                <span>{item.title}</span>
+                                <ExternalLink className="mt-1 h-4 w-4 shrink-0" />
+                              </a>
+
+                              <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
+                                {item.company ? (
+                                  <span className="inline-flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-cyan-300" />
+                                    {item.company}
+                                  </span>
+                                ) : null}
+                                <span className="inline-flex items-center gap-2">
+                                  <MapPin className="h-4 w-4 text-cyan-300" />
+                                  {item.location}
+                                </span>
+                                <span className="inline-flex items-center gap-2">
+                                  <Briefcase className="h-4 w-4 text-cyan-300" />
+                                  {item.work_mode} / {item.opportunity_type}
+                                </span>
+                              </div>
                             </div>
 
+                            <div className="text-left md:text-right">
+                              <div className="text-xs uppercase tracking-[0.22em] text-slate-500">AI Match</div>
+                              <div className={cn('mt-1 text-2xl font-semibold', aiMatch.scoreClass)}>
+                                {Math.round(item.score)}
+                              </div>
+                              <p className="mt-1 text-xs text-slate-400">
+                                {hasResumeOnFile ? 'Resume + profile relevance' : 'Profile-based relevance'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <p className="mt-4 text-sm leading-6 text-slate-300">
+                            {item.snippet || 'Open the listing for full details.'}
+                          </p>
+
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {item.matched_skills.map((skill) => (
+                              <Badge key={skill} className="border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-100">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+
+                          <p className="mt-4 text-sm text-slate-400">{item.match_reasons.join(' | ')}</p>
+
+                          <div className="mt-5">
                             <a
                               href={item.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-3 inline-flex items-start gap-2 text-xl font-semibold text-slate-50 transition hover:text-cyan-200"
+                              className="inline-flex items-center gap-2 text-sm font-medium text-cyan-200 transition hover:text-cyan-100"
                             >
-                              <span>{item.title}</span>
-                              <ExternalLink className="mt-1 h-4 w-4 shrink-0" />
+                              Open listing
+                              <ArrowRight className="h-4 w-4" />
                             </a>
-
-                            <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
-                              {item.company ? (
-                                <span className="inline-flex items-center gap-2">
-                                  <Building2 className="h-4 w-4 text-cyan-300" />
-                                  {item.company}
-                                </span>
-                              ) : null}
-                              <span className="inline-flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-cyan-300" />
-                                {item.location}
-                              </span>
-                              <span className="inline-flex items-center gap-2">
-                                <Briefcase className="h-4 w-4 text-cyan-300" />
-                                {item.work_mode} / {item.opportunity_type}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="text-left md:text-right">
-                            <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Match Score</div>
-                            <div className="mt-1 text-2xl font-semibold text-cyan-200">{item.score}</div>
                           </div>
                         </div>
-
-                        <p className="mt-4 text-sm leading-6 text-slate-300">
-                          {item.snippet || 'Open the listing for full details.'}
-                        </p>
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {item.matched_skills.map((skill) => (
-                            <Badge key={skill} className="border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-100">
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-
-                        <p className="mt-4 text-sm text-slate-400">{item.match_reasons.join(' | ')}</p>
-
-                        <div className="mt-5">
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-2 text-sm font-medium text-cyan-200 transition hover:text-cyan-100"
-                          >
-                            Open listing
-                            <ArrowRight className="h-4 w-4" />
-                          </a>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    )
+                  })}
                 </div>
               </div>
             ))}
