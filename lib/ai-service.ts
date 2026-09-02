@@ -42,28 +42,19 @@ interface InvestmentOption {
 
 const API_BASE = '/api';
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-
 export async function getAIRecommendations(data: AIRequestData) {
   try {
     console.log('Sending data to AI service:', data);
 
-    const response = await fetch(`${API_BASE}/recommendations`, {
+    // Use the current Worker-backed advisor endpoint. The old `/recommendations`
+    // route is a legacy path and may not exist in newer deployments.
+    const response = await fetch(`${API_BASE}/agent/advice`, {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json',
-        'X-API-Key': API_KEY || ''
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        prompt: data.userMessage,
-        userData: {
-          country: data.country,
-          university: data.university,
-          monthlyIncome: data.monthlyIncome,
-          monthlyExpenses: data.monthlyExpenses,
-          loanAmount: data.loanAmount,
-          userMessage: data.userMessage
-        }
+        message: data.userMessage
       })
     });
 
@@ -76,7 +67,15 @@ export async function getAIRecommendations(data: AIRequestData) {
     const result = await response.json();
     console.log('AI service response:', result);
     
-    return result;
+    return {
+      data: {
+        recommendations: {
+          advice: result?.response ?? '',
+          relevantData: []
+        }
+      },
+      raw: result
+    };
   } catch (error) {
     console.error('Error calling AI service:', error);
     throw error;

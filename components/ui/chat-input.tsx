@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useTextareaResize } from "@/hooks/use-textarea-resize";
 import { ArrowUpIcon } from "lucide-react";
 import type React from "react";
-import { createContext, useContext } from "react";
+import { createContext, forwardRef, useContext } from "react";
 
 interface ChatInputContextValue {
 	value?: string;
@@ -73,14 +73,17 @@ interface ChatInputTextAreaProps extends React.ComponentProps<typeof Textarea> {
 	variant?: "default" | "unstyled";
 }
 
-function ChatInputTextArea({
-	onSubmit: onSubmitProp,
-	value: valueProp,
-	onChange: onChangeProp,
-	className,
-	variant: variantProp,
-	...props
-}: ChatInputTextAreaProps) {
+const ChatInputTextArea = forwardRef<HTMLTextAreaElement, ChatInputTextAreaProps>(function ChatInputTextArea(
+	{
+		onSubmit: onSubmitProp,
+		value: valueProp,
+		onChange: onChangeProp,
+		className,
+		variant: variantProp,
+		...props
+	},
+	forwardedRef,
+) {
 	const context = useContext(ChatInputContext);
 	const value = valueProp ?? context.value ?? "";
 	const onChange = onChangeProp ?? context.onChange;
@@ -92,6 +95,14 @@ function ChatInputTextArea({
 		variantProp ?? (context.variant === "default" ? "unstyled" : "default");
 
 	const textareaRef = useTextareaResize(value, rows);
+	const setTextareaRef = (node: HTMLTextAreaElement | null) => {
+		textareaRef.current = node;
+		if (typeof forwardedRef === "function") {
+			forwardedRef(node);
+		} else if (forwardedRef) {
+			forwardedRef.current = node;
+		}
+	};
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		if (!onSubmit) {
 			return;
@@ -107,7 +118,7 @@ function ChatInputTextArea({
 
 	return (
 		<Textarea
-			ref={textareaRef}
+			ref={setTextareaRef}
 			{...props}
 			value={value}
 			onChange={onChange}
@@ -121,7 +132,7 @@ function ChatInputTextArea({
 			rows={rows}
 		/>
 	);
-}
+});
 
 ChatInputTextArea.displayName = "ChatInputTextArea";
 
