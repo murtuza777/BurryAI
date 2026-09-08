@@ -145,31 +145,31 @@ function getAiMatchMeta(score: number) {
   if (score >= 120) {
     return {
       label: 'Top fit',
-      badgeClass: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100',
-      scoreClass: 'text-emerald-200'
+      badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-100',
+      scoreClass: 'text-emerald-600 dark:text-emerald-200'
     }
   }
 
   if (score >= 95) {
     return {
       label: 'Strong fit',
-      badgeClass: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-100',
-      scoreClass: 'text-cyan-200'
+      badgeClass: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-800 dark:text-cyan-100',
+      scoreClass: 'text-cyan-600 dark:text-cyan-200'
     }
   }
 
   if (score >= 75) {
     return {
       label: 'Good fit',
-      badgeClass: 'border-violet-400/30 bg-violet-400/10 text-violet-100',
-      scoreClass: 'text-violet-200'
+      badgeClass: 'border-violet-500/30 bg-violet-500/10 text-violet-800 dark:text-violet-100',
+      scoreClass: 'text-violet-600 dark:text-violet-200'
     }
   }
 
   return {
     label: 'Potential fit',
-    badgeClass: 'border-amber-400/30 bg-amber-400/10 text-amber-100',
-    scoreClass: 'text-amber-200'
+    badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-100',
+    scoreClass: 'text-amber-600 dark:text-amber-200'
   }
 }
 
@@ -188,8 +188,8 @@ function ToggleButton(props: {
       className={cn(
         'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition',
         props.active
-          ? 'border-cyan-300/80 bg-cyan-300 text-slate-950 shadow-[0_10px_24px_rgba(34,211,238,0.16)]'
-          : 'border-slate-700 bg-slate-950/70 text-slate-300 hover:border-cyan-400/60 hover:text-slate-100'
+          ? 'border-cyan-400/80 bg-cyan-400 text-slate-950 shadow-[0_4px_14px_rgba(34,211,238,0.25)] dark:border-cyan-300/80 dark:bg-cyan-300 dark:shadow-[0_10px_24px_rgba(34,211,238,0.16)]'
+          : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-400/60 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:border-cyan-400/60 dark:hover:text-slate-100'
       )}
     >
       {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
@@ -408,36 +408,36 @@ export default function DashboardOpportunitiesPage() {
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(2,6,23,0.76))] px-4 py-3 shadow-[0_14px_44px_rgba(2,6,23,0.38)]">
+      <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(2,6,23,0.76))] px-4 py-3 dark:shadow-[0_14px_44px_rgba(2,6,23,0.38)]">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex flex-1 flex-wrap items-center gap-2">
             {hasSavedOpportunityProfile ? (
               <>
-                <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">
+                <Badge className="border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
                   {profileDraft.profession || 'Your role'}
                 </Badge>
                 {[profileDraft.city, profileDraft.stateRegion, profileDraft.country].filter(Boolean).join(', ') ? (
-                  <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">
+                  <Badge className="border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
                     {[profileDraft.city, profileDraft.stateRegion, profileDraft.country].filter(Boolean).join(', ')}
                   </Badge>
                 ) : (
-                  <Badge className="border-slate-700 bg-slate-900/70 text-slate-200">Remote-first</Badge>
+                  <Badge className="border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200">Remote-first</Badge>
                 )}
-                <Badge className="border-slate-700 bg-slate-900/70 text-slate-200 capitalize">
+                <Badge className="border-slate-200 bg-slate-100 text-slate-700 capitalize dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
                   {profileDraft.preferredMode}
                 </Badge>
               </>
             ) : (
-              <p className="text-sm text-slate-300">
-                Add your role + skills in <span className="text-slate-100">Profile details</span>.
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Add your role + skills in <span className="font-medium text-slate-900 dark:text-slate-100">Profile details</span>.
               </p>
             )}
             <Badge
               className={cn(
                 'border text-xs',
                 hasResumeOnFile
-                  ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100'
-                  : 'border-amber-400/30 bg-amber-400/10 text-amber-100'
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-100'
+                  : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-100'
               )}
             >
               {hasResumeOnFile ? 'Resume on file' : 'Resume recommended'}
@@ -449,7 +449,7 @@ export default function DashboardOpportunitiesPage() {
               type="button"
               variant="outline"
               onClick={() => setShowIntro((prev) => !prev)}
-              className="h-8 rounded-full border-slate-700 bg-slate-900/70 px-3 text-xs text-slate-100 hover:bg-slate-800"
+              className="h-8 rounded-full border-slate-200 bg-white px-3 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800"
             >
               {showIntro ? 'Hide' : 'How it works'}
               {showIntro ? <ChevronUp className="ml-1.5 h-3.5 w-3.5" /> : <ChevronDown className="ml-1.5 h-3.5 w-3.5" />}
@@ -457,7 +457,7 @@ export default function DashboardOpportunitiesPage() {
             <Button
               type="button"
               onClick={() => router.push('/dashboard/profile')}
-              className="h-8 rounded-full border border-cyan-300/60 bg-cyan-300 px-3 text-xs font-semibold text-slate-950 hover:bg-cyan-200"
+              className="h-8 rounded-full border border-cyan-400/60 bg-cyan-400 px-3 text-xs font-semibold text-slate-950 hover:bg-cyan-300 dark:border-cyan-300/60 dark:bg-cyan-300 dark:hover:bg-cyan-200"
             >
               <PencilLine className="mr-1.5 h-3.5 w-3.5" />
               Profile details
@@ -466,12 +466,12 @@ export default function DashboardOpportunitiesPage() {
         </div>
 
         {showIntro ? (
-          <div className="mt-3 rounded-2xl border border-slate-800/80 bg-slate-950/55 px-4 py-3 text-sm text-slate-300">
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800/80 dark:bg-slate-950/55 dark:text-slate-300">
             <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-100">How it works</p>
-              <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-slate-300">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">How it works</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 <li>
-                  We prioritize <span className="text-slate-100">hidden + direct</span> sources (career pages, communities, niche boards),
+                  We prioritize <span className="font-semibold text-slate-900 dark:text-slate-100">hidden + direct</span> sources (career pages, communities, niche boards),
                   then place broad boards lower.
                 </li>
                 <li>
@@ -482,11 +482,11 @@ export default function DashboardOpportunitiesPage() {
                 </li>
                 <li>
                   Status:{" "}
-                  <span className={hasSavedOpportunityProfile ? 'text-emerald-200' : 'text-amber-200'}>
+                  <span className={hasSavedOpportunityProfile ? 'font-medium text-emerald-600 dark:text-emerald-200' : 'font-medium text-amber-600 dark:text-amber-200'}>
                     {hasSavedOpportunityProfile ? 'Profile saved' : 'Profile needed'}
                   </span>
                   {' '}| Resume:{" "}
-                  <span className={hasResumeOnFile ? 'text-emerald-200' : 'text-amber-200'}>
+                  <span className={hasResumeOnFile ? 'font-medium text-emerald-600 dark:text-emerald-200' : 'font-medium text-amber-600 dark:text-amber-200'}>
                     {hasResumeOnFile ? 'Uploaded' : 'Not uploaded'}
                   </span>
                 </li>
@@ -496,9 +496,9 @@ export default function DashboardOpportunitiesPage() {
         ) : null}
 
         {hasResumeOnFile && profileDraft.resumeSummary ? (
-          <div className="mt-3 rounded-2xl border border-slate-800/80 bg-slate-950/55 px-4 py-3">
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800/80 dark:bg-slate-950/55">
             <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Resume Summary</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{profileDraft.resumeSummary}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{profileDraft.resumeSummary}</p>
           </div>
         ) : null}
       </section>
@@ -510,15 +510,15 @@ export default function DashboardOpportunitiesPage() {
         isGuest={isGuest}
       />
 
-      <section className="rounded-[1.25rem] border border-cyan-500/20 bg-slate-950/60 px-3 py-3 shadow-[0_12px_34px_rgba(2,6,23,0.3)]">
+      <section className="rounded-[1.25rem] border border-slate-200/80 bg-white/90 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:border-cyan-500/20 dark:bg-slate-950/60 dark:shadow-[0_12px_34px_rgba(2,6,23,0.3)]">
         <div className="flex flex-col gap-2.5 lg:flex-row">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input
               id="query"
               value={filters.query}
               onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
-              className="h-9 rounded-full border-slate-700 bg-slate-950/80 pl-11 pr-4 text-sm text-slate-100"
+              className="h-9 rounded-full border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100 dark:placeholder:text-slate-500"
               placeholder="Search role, skill, internship, company, or hiring phrase"
             />
           </div>
@@ -526,7 +526,7 @@ export default function DashboardOpportunitiesPage() {
             type="button"
             onClick={() => void runSearch()}
             disabled={searching || isGuest || !hasSavedOpportunityProfile}
-            className="h-9 rounded-full border border-cyan-300/60 bg-cyan-300 px-4 text-xs font-semibold text-slate-950 hover:bg-cyan-200"
+            className="h-9 rounded-full border border-cyan-400/60 bg-cyan-400 px-4 text-xs font-semibold text-slate-950 hover:bg-cyan-300 dark:border-cyan-300/60 dark:bg-cyan-300 dark:hover:bg-cyan-200"
           >
             {searching ? 'Searching...' : 'Search listings'}
           </Button>
@@ -535,7 +535,7 @@ export default function DashboardOpportunitiesPage() {
           {hasSavedOpportunityProfile ? (
             <div className="flex min-h-8 flex-wrap items-center gap-2">
               {remoteRegions.slice(0, 3).map((region) => (
-                <Badge key={region} className="border-slate-700 bg-slate-900 text-slate-200">
+                <Badge key={region} className="border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   {region}
                 </Badge>
               ))}
@@ -547,7 +547,7 @@ export default function DashboardOpportunitiesPage() {
             type="button"
             variant="outline"
             onClick={() => setShowFilters((prev) => !prev)}
-            className="h-8 shrink-0 rounded-full border-slate-700 bg-slate-900/70 px-3 text-xs text-slate-100 hover:bg-slate-800"
+            className="h-8 shrink-0 rounded-full border-slate-200 bg-white px-3 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800"
           >
             <Filter className="mr-1.5 h-3.5 w-3.5" />
             Filters
@@ -555,17 +555,17 @@ export default function DashboardOpportunitiesPage() {
           </Button>
         </div>
         {!hasSavedOpportunityProfile ? (
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Add your opportunity details in Profile before searching so results stay personalized.
           </p>
         ) : null}
 
         {showFilters ? (
-          <div className="mt-3 grid gap-3 rounded-xl border border-slate-800/80 bg-slate-950/50 p-2.5 xl:grid-cols-[1.4fr_1fr]">
+          <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 dark:border-slate-800/80 dark:bg-slate-950/50 xl:grid-cols-[1.4fr_1fr]">
             <div className="space-y-3">
               <div>
-                <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-300">
-                  <Filter className="h-3.5 w-3.5 text-cyan-300" />
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                  <Filter className="h-3.5 w-3.5 text-cyan-500 dark:text-cyan-300" />
                   Search mode
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -582,8 +582,8 @@ export default function DashboardOpportunitiesPage() {
               </div>
 
               <div>
-                <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-300">
-                  <GraduationCap className="h-3.5 w-3.5 text-cyan-300" />
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                  <GraduationCap className="h-3.5 w-3.5 text-cyan-500 dark:text-cyan-300" />
                   Opportunity type
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -613,8 +613,8 @@ export default function DashboardOpportunitiesPage() {
             </div>
 
             <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/55 p-3">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Search radius</p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800/80 dark:bg-slate-950/55">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Search radius</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {RADIUS_OPTIONS.map((radius) => (
                     <ToggleButton
@@ -626,8 +626,8 @@ export default function DashboardOpportunitiesPage() {
                   ))}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/55 p-3">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Result volume</p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800/80 dark:bg-slate-950/55">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Result volume</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {RESULT_OPTIONS.map((count) => (
                     <ToggleButton
@@ -644,17 +644,17 @@ export default function DashboardOpportunitiesPage() {
         ) : null}
       </section>
 
-      <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-slate-950/60 shadow-[0_12px_34px_rgba(2,6,23,0.3)]">
-        <div className="border-b border-slate-800/70 px-4 py-4 sm:px-5 sm:py-4">
+      <section className="overflow-hidden rounded-[1.25rem] border border-slate-200/80 bg-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:border-cyan-500/20 dark:bg-slate-950/60 dark:shadow-[0_12px_34px_rgba(2,6,23,0.3)]">
+        <div className="border-b border-slate-100 px-4 py-4 dark:border-slate-800/70 sm:px-5 sm:py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Results</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-100 sm:text-xl">
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Results</p>
+              <h3 className="mt-1 text-lg font-semibold text-slate-900 sm:text-xl dark:text-slate-100">
                 {searchResult ? `${searchResult.opportunities.length} matched listings` : 'No search run yet'}
               </h3>
             </div>
             {searchResult ? (
-              <Badge className="shrink-0 border-slate-700 bg-slate-900/70 text-slate-200 capitalize">
+              <Badge className="shrink-0 border-slate-200 bg-slate-100 text-slate-700 capitalize dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
                 Mode: {searchResult.filters_applied.mode}
               </Badge>
             ) : null}
@@ -663,22 +663,22 @@ export default function DashboardOpportunitiesPage() {
 
         <div className="p-4 sm:p-5">
         {!searchResult ? (
-          <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center sm:p-10">
-            <p className="text-base font-medium text-slate-200">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center dark:border-slate-700 dark:bg-slate-950/40 sm:p-10">
+            <p className="text-base font-medium text-slate-800 dark:text-slate-200">
               {hasSavedOpportunityProfile
                 ? 'Search across direct listings and community hiring posts'
                 : 'Finish your opportunity profile to unlock personalized discovery'}
             </p>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
               {hasSavedOpportunityProfile
                 ? 'We prioritize company career pages, niche platforms, social hiring posts, and community leads, then keep popular boards lower in the list.'
                 : 'Use Profile details once, then this page stays focused on hidden and useful opportunities.'}
             </p>
           </div>
         ) : searchResult.opportunities.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center sm:p-10">
-            <p className="text-base font-medium text-slate-200">No strong listings matched these filters</p>
-            <p className="mt-2 text-sm text-slate-400">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center dark:border-slate-700 dark:bg-slate-950/40 sm:p-10">
+            <p className="text-base font-medium text-slate-800 dark:text-slate-200">No strong listings matched these filters</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
               Try switching mode, broadening skills, or using a shorter search phrase.
             </p>
           </div>
@@ -686,12 +686,12 @@ export default function DashboardOpportunitiesPage() {
           <div className="space-y-6">
             {groupedResults.map((group) => (
               <div key={group.bucket} className="space-y-4">
-                <div className="flex flex-col gap-2 rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
+                <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800/70 dark:bg-slate-950/40 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
                   <div className="min-w-0">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{group.items.length} listings</p>
-                    <h4 className="mt-1 text-base font-semibold text-slate-100 sm:text-lg">{SOURCE_BUCKET_LABELS[group.bucket].title}</h4>
+                    <h4 className="mt-1 text-base font-semibold text-slate-900 sm:text-lg dark:text-slate-100">{SOURCE_BUCKET_LABELS[group.bucket].title}</h4>
                   </div>
-                  <p className="max-w-2xl text-sm leading-relaxed text-slate-400">{SOURCE_BUCKET_LABELS[group.bucket].description}</p>
+                  <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">{SOURCE_BUCKET_LABELS[group.bucket].description}</p>
                 </div>
 
                 <div className="grid gap-4">
@@ -701,29 +701,29 @@ export default function DashboardOpportunitiesPage() {
                     return (
                       <article
                         key={item.id}
-                        className="group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.92))] p-5 transition hover:border-cyan-400/40 hover:shadow-[0_14px_40px_rgba(14,165,233,0.1)]"
+                        className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 transition hover:border-cyan-400/40 hover:shadow-[0_12px_32px_rgba(14,165,233,0.08)] dark:border-slate-800/90 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.92))] dark:hover:border-cyan-400/40 dark:hover:shadow-[0_14px_40px_rgba(14,165,233,0.1)]"
                       >
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.07),transparent_30%)] opacity-0 transition group-hover:opacity-100" />
                         <div className="relative">
                           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                             <div className="max-w-3xl">
                               <div className="flex flex-wrap gap-2">
-                                <Badge className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100">
+                                <Badge className="border-cyan-500/30 bg-cyan-500/10 text-cyan-800 dark:text-cyan-100">
                                   {item.source_site}
                                 </Badge>
                                 <Badge className={cn('capitalize', aiMatch.badgeClass)}>
                                   AI Match: {aiMatch.label}
                                 </Badge>
-                                <Badge className="border-slate-700 bg-slate-900 text-slate-200 capitalize">
+                                <Badge className="border-slate-200 bg-slate-100 text-slate-700 capitalize dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                                   {item.listing_quality}
                                 </Badge>
                                 {item.near_user_location ? (
-                                  <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-100">
+                                  <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-100">
                                     Nearby match
                                   </Badge>
                                 ) : null}
                                 {item.remote_friendly ? (
-                                  <Badge className="border-sky-400/30 bg-sky-400/10 text-sky-100">
+                                  <Badge className="border-sky-500/30 bg-sky-500/10 text-sky-800 dark:text-sky-100">
                                     Remote-friendly
                                   </Badge>
                                 ) : null}
@@ -733,25 +733,25 @@ export default function DashboardOpportunitiesPage() {
                                 href={item.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="mt-3 inline-flex items-start gap-2 text-xl font-semibold text-slate-50 transition hover:text-cyan-200"
+                                className="mt-3 inline-flex items-start gap-2 text-xl font-semibold text-slate-900 transition hover:text-cyan-600 dark:text-slate-50 dark:hover:text-cyan-200"
                               >
                                 <span>{item.title}</span>
                                 <ExternalLink className="mt-1 h-4 w-4 shrink-0" />
                               </a>
 
-                              <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
+                              <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-300">
                                 {item.company ? (
                                   <span className="inline-flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-cyan-300" />
+                                    <Building2 className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
                                     {item.company}
                                   </span>
                                 ) : null}
                                 <span className="inline-flex items-center gap-2">
-                                  <MapPin className="h-4 w-4 text-cyan-300" />
+                                  <MapPin className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
                                   {item.location}
                                 </span>
                                 <span className="inline-flex items-center gap-2">
-                                  <Briefcase className="h-4 w-4 text-cyan-300" />
+                                  <Briefcase className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
                                   {item.work_mode} / {item.opportunity_type}
                                 </span>
                               </div>
@@ -762,32 +762,32 @@ export default function DashboardOpportunitiesPage() {
                               <div className={cn('mt-1 text-2xl font-semibold', aiMatch.scoreClass)}>
                                 {Math.round(item.score)}
                               </div>
-                              <p className="mt-1 text-xs text-slate-400">
+                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                 {hasResumeOnFile ? 'Resume + profile relevance' : 'Profile-based relevance'}
                               </p>
                             </div>
                           </div>
 
-                          <p className="mt-4 text-sm leading-6 text-slate-300">
+                          <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
                             {item.snippet || 'Open the listing for full details.'}
                           </p>
 
                           <div className="mt-4 flex flex-wrap gap-2">
                             {item.matched_skills.map((skill) => (
-                              <Badge key={skill} className="border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-100">
+                              <Badge key={skill} className="border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-800 dark:text-fuchsia-100">
                                 {skill}
                               </Badge>
                             ))}
                           </div>
 
-                          <p className="mt-4 text-sm text-slate-400">{item.match_reasons.join(' | ')}</p>
+                          <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{item.match_reasons.join(' | ')}</p>
 
                           <div className="mt-5">
                             <a
                               href={item.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-2 text-sm font-medium text-cyan-200 transition hover:text-cyan-100"
+                              className="inline-flex items-center gap-2 text-sm font-medium text-cyan-600 transition hover:text-cyan-700 dark:text-cyan-200 dark:hover:text-cyan-100"
                             >
                               Open listing
                               <ArrowRight className="h-4 w-4" />

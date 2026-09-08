@@ -8,6 +8,7 @@ import '@/lib/chartjs-register'
 import { HolographicCard } from '@/components/dashboard/HolographicUI'
 import FinanceLoader from '@/components/ui/FinanceLoader'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
   deleteExpense,
   deleteLoan,
@@ -36,6 +37,7 @@ const DEFAULT_SUMMARY: FinancialSummary = {
 
 export default function DashboardOverviewPage() {
   const { user, guestUser, isGuest, loading: authLoading } = useAuth()
+  const { resolvedTheme } = useTheme()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -193,55 +195,58 @@ export default function DashboardOverviewPage() {
     return <FinanceLoader />
   }
 
+  const chartLabelColor = resolvedTheme === 'dark' ? '#e2e8f0' : '#334155'
+  const chartGridColor = resolvedTheme === 'dark' ? 'rgba(148, 163, 184, 0.18)' : 'rgba(148, 163, 184, 0.12)'
+
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-800/80 bg-slate-950/50 px-4 py-4 sm:px-5 sm:py-5">
-        <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/80">Dashboard</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">Welcome, {displayName}</h1>
+      <section className="rounded-2xl border border-slate-200/90 bg-white/80 px-4 py-4 shadow-xs dark:border-slate-800/80 dark:bg-slate-950/50 sm:px-5 sm:py-5">
+        <p className="text-xs uppercase tracking-[0.28em] font-semibold text-cyan-600 dark:text-cyan-300/80">Dashboard</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">Welcome, {displayName}</h1>
       </section>
 
       {error ? (
-        <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-rose-200">{error}</div>
+        <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-rose-700 dark:text-rose-200">{error}</div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <HolographicCard>
-          <p className="flex items-center gap-2 text-sm text-slate-300">
-            <Wallet className="h-4 w-4 text-cyan-300" />
+          <p className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <Wallet className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
             Total Income
           </p>
-          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">${summary.total_income.toLocaleString()}</p>
+          <p className="mt-2 break-words text-3xl font-semibold text-slate-900 dark:text-white sm:text-4xl">${summary.total_income.toLocaleString()}</p>
         </HolographicCard>
 
         <HolographicCard>
-          <p className="flex items-center gap-2 text-sm text-slate-300">
-            <PieChart className="h-4 w-4 text-rose-300" />
+          <p className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <PieChart className="h-4 w-4 text-rose-500 dark:text-rose-300" />
             Total Expenses
           </p>
-          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">${summary.total_expenses.toLocaleString()}</p>
+          <p className="mt-2 break-words text-3xl font-semibold text-slate-900 dark:text-white sm:text-4xl">${summary.total_expenses.toLocaleString()}</p>
         </HolographicCard>
 
         <HolographicCard>
-          <p className="flex items-center gap-2 text-sm text-slate-300">
-            <CreditCard className="h-4 w-4 text-amber-300" />
+          <p className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <CreditCard className="h-4 w-4 text-amber-500 dark:text-amber-300" />
             Loan Balance
           </p>
-          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">${summary.total_loan_balance.toLocaleString()}</p>
+          <p className="mt-2 break-words text-3xl font-semibold text-slate-900 dark:text-white sm:text-4xl">${summary.total_loan_balance.toLocaleString()}</p>
         </HolographicCard>
 
         <HolographicCard>
-          <p className="flex items-center gap-2 text-sm text-slate-300">
-            <TrendingUp className="h-4 w-4 text-emerald-300" />
+          <p className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
             Health Score
           </p>
-          <p className="mt-2 break-words text-3xl font-semibold sm:text-4xl">{dashboardScore.score}/100</p>
-          <p className="mt-1 text-xs text-slate-300">Grade {dashboardScore.grade}</p>
+          <p className="mt-2 break-words text-3xl font-semibold text-slate-900 dark:text-white sm:text-4xl">{dashboardScore.score}/100</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Grade {dashboardScore.grade}</p>
         </HolographicCard>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <HolographicCard>
-          <h3 className="mb-4 text-xl font-semibold">Monthly Cash Flow Mix</h3>
+          <h3 className="mb-4 text-xl font-semibold text-slate-900 dark:text-white">Monthly Cash Flow Mix</h3>
           <div className="h-64 sm:h-72">
             <Doughnut
               data={cashFlowChartData}
@@ -249,7 +254,7 @@ export default function DashboardOverviewPage() {
                 maintainAspectRatio: false,
                 plugins: {
                   legend: {
-                    labels: { color: '#e2e8f0' }
+                    labels: { color: chartLabelColor }
                   }
                 }
               }}
@@ -258,7 +263,7 @@ export default function DashboardOverviewPage() {
         </HolographicCard>
 
         <HolographicCard>
-          <h3 className="mb-4 text-xl font-semibold">6-Month Projection</h3>
+          <h3 className="mb-4 text-xl font-semibold text-slate-900 dark:text-white">6-Month Projection</h3>
           <div className="h-64 sm:h-72">
             <Line
               data={projectionChartData}
@@ -266,20 +271,20 @@ export default function DashboardOverviewPage() {
                 maintainAspectRatio: false,
                 plugins: {
                   legend: {
-                    labels: { color: '#e2e8f0' }
+                    labels: { color: chartLabelColor }
                   }
                 },
                 scales: {
                   x: {
-                    ticks: { color: '#e2e8f0' },
-                    grid: { color: 'rgba(148, 163, 184, 0.18)' }
+                    ticks: { color: chartLabelColor },
+                    grid: { color: chartGridColor }
                   },
                   y: {
                     ticks: {
-                      color: '#e2e8f0',
+                      color: chartLabelColor,
                       callback: (value) => `$${value.toLocaleString()}`
                     },
-                    grid: { color: 'rgba(148, 163, 184, 0.18)' }
+                    grid: { color: chartGridColor }
                   }
                 }
               }}
@@ -290,25 +295,25 @@ export default function DashboardOverviewPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <HolographicCard>
-          <h3 className="mb-3 text-lg font-semibold">Recent Expenses</h3>
-          <div className="max-h-80 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Recent Expenses</h3>
+          <div className="max-h-80 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
             {expenses.length === 0 ? (
-              <p className="text-sm text-slate-400">No expenses logged yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No expenses logged yet.</p>
             ) : (
               expenses.slice(0, 10).map((expense) => (
                 <div
                   key={expense.id}
-                  className="group flex items-start justify-between gap-2 rounded-lg border border-slate-700/60 bg-slate-900/60 p-3"
+                  className="group flex items-start justify-between gap-2 rounded-xl border border-slate-200/90 bg-white/70 p-3 shadow-2xs dark:border-slate-700/60 dark:bg-slate-900/60"
                 >
                   <div className="min-w-0">
-                    <p className="font-medium">{expense.category}</p>
-                    <p className="text-sm text-slate-300">${expense.amount.toLocaleString()}</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">{expense.category}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">${expense.amount.toLocaleString()}</p>
                     {expense.description ? <p className="break-words text-xs text-slate-500">{expense.description}</p> : null}
                     <p className="text-xs text-slate-400">{expense.date}</p>
                   </div>
                   <button
                     onClick={() => void handleDeleteExpense(expense.id)}
-                    className="shrink-0 rounded-md p-1.5 text-slate-500 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="shrink-0 rounded-md p-1.5 text-slate-400 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
                     title="Delete expense"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -320,24 +325,24 @@ export default function DashboardOverviewPage() {
         </HolographicCard>
 
         <HolographicCard>
-          <h3 className="mb-3 text-lg font-semibold">Loan Snapshot</h3>
-          <div className="max-h-80 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Loan Snapshot</h3>
+          <div className="max-h-80 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
             {loans.length === 0 ? (
-              <p className="text-sm text-slate-400">No loans recorded yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No loans recorded yet.</p>
             ) : (
               loans.slice(0, 10).map((loan) => (
                 <div
                   key={loan.id}
-                  className="group flex items-start justify-between gap-2 rounded-lg border border-slate-700/60 bg-slate-900/60 p-3"
+                  className="group flex items-start justify-between gap-2 rounded-xl border border-slate-200/90 bg-white/70 p-3 shadow-2xs dark:border-slate-700/60 dark:bg-slate-900/60"
                 >
                   <div className="min-w-0">
-                    <p className="font-medium">{loan.loan_name}</p>
-                    <p className="text-sm text-slate-300">Balance: ${loan.remaining_balance.toLocaleString()}</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">{loan.loan_name}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">Balance: ${loan.remaining_balance.toLocaleString()}</p>
                     <p className="text-xs text-slate-400">Min payment: ${loan.minimum_payment.toLocaleString()}</p>
                   </div>
                   <button
                     onClick={() => void handleDeleteLoan(loan.id)}
-                    className="shrink-0 rounded-md p-1.5 text-slate-500 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="shrink-0 rounded-md p-1.5 text-slate-400 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
                     title="Delete loan"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
