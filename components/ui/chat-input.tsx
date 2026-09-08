@@ -96,7 +96,7 @@ const ChatInputTextArea = forwardRef<HTMLTextAreaElement, ChatInputTextAreaProps
 
 	const textareaRef = useTextareaResize(value, rows);
 	const setTextareaRef = (node: HTMLTextAreaElement | null) => {
-		textareaRef.current = node;
+		(textareaRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
 		if (typeof forwardedRef === "function") {
 			forwardedRef(node);
 		} else if (forwardedRef) {

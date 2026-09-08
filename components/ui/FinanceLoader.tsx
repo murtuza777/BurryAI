@@ -20,7 +20,7 @@ const FinanceLoader = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_50%,#0891b22b,transparent_50%),linear-gradient(#020617,#020617)] text-slate-100">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-50/95 text-slate-800 backdrop-blur-md transition-colors duration-200 dark:bg-[radial-gradient(circle_at_50%_50%,#0891b22b,transparent_50%),linear-gradient(#020617,#020617)] dark:text-slate-100">
       <div className="relative flex items-end justify-center h-32 space-x-2">
         {/* Animated Bars */}
         {[0, 1, 2, 3, 4].map((i) => (
@@ -58,11 +58,11 @@ const FinanceLoader = () => {
         transition={{ delay: 0.5 }}
         className="mt-8 flex flex-col items-center"
       >
-        <h2 className="text-2xl font-bold tracking-tight text-cyan-400">BurryAI</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-cyan-600 dark:text-cyan-400">BurryAI</h2>
         <motion.p
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="text-sm text-cyan-200/70 mt-2"
+          className="text-sm text-cyan-700/80 dark:text-cyan-200/70 mt-2"
         >
           Analyzing your financial data...
         </motion.p>
