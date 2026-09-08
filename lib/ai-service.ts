@@ -64,7 +64,7 @@ export async function getAIRecommendations(data: AIRequestData) {
       throw new Error(errorText || 'AI service error');
     }
     
-    const result = await response.json();
+    const result = (await response.json()) as { response?: string; [key: string]: unknown };
     console.log('AI service response:', result);
     
     return {

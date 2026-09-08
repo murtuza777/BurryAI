@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:web": "next dev -p 3000",
-    "dev:worker:local": "npm run dev --prefix burryai-worker -- --port 8787 --ip 127.0.0.1",
+    "dev:worker:local": "npm run dev --prefix burryai-worker -- --local --port 8787 --ip 127.0.0.1",
     "dev:all": "kill-port 3000 8787 && concurrently -k -n worker,web -c cyan,green \"npm run dev:worker:local\" \"cross-env WORKER_API_BASE_URL=http://127.0.0.1:8787 NEXT_PUBLIC_WORKER_API_BASE_URL=http://127.0.0.1:8787 npm run dev:web\"",
     "build": "next build",
     "build:cloudflare:web": "cross-env WORKER_API_BASE_URL=https://burryai-worker.mdmurtuzaali777.workers.dev NEXT_PUBLIC_WORKER_API_BASE_URL=https://burryai-worker.mdmurtuzaali777.workers.dev NEXT_PUBLIC_API_BASE_URL=https://burryai-worker.mdmurtuzaali777.workers.dev NEXT_PUBLIC_USE_DIRECT_WORKER_API=true opennextjs-cloudflare build -c wrangler.frontend.jsonc --skipWranglerConfigCheck",
