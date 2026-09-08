@@ -43,7 +43,7 @@ function renderInline(text: string, keyPrefix: string): JSX.Element[] {
   return parseInline(text).map((token, index) => {
     if (token.type === "bold") {
       return (
-        <strong key={`${keyPrefix}-b-${index}`} className="font-semibold text-slate-100">
+        <strong key={`${keyPrefix}-b-${index}`} className="font-semibold text-slate-900 dark:text-slate-100">
           {token.text}
         </strong>
       )
@@ -56,7 +56,7 @@ function renderInline(text: string, keyPrefix: string): JSX.Element[] {
           href={token.href}
           target="_blank"
           rel="noreferrer"
-          className="text-cyan-300 underline decoration-cyan-500/50 underline-offset-2 break-all"
+          className="text-cyan-700 underline decoration-cyan-500/50 underline-offset-2 break-all dark:text-cyan-300"
         >
           {token.text}
         </a>
@@ -181,7 +181,7 @@ export function renderAssistantContent(text: string): JSX.Element[] {
       flushBullets(index)
       flushNumbers(index)
       nodes.push(
-        <h4 key={`h-${index}`} className="mt-3 text-sm font-semibold text-cyan-200">
+        <h4 key={`h-${index}`} className="mt-3 text-sm font-semibold text-cyan-700 dark:text-cyan-200">
           {renderInline(headingMatch[1], `h-${index}`)}
         </h4>
       )
@@ -204,7 +204,7 @@ export function renderAssistantContent(text: string): JSX.Element[] {
       flushBullets(index)
       flushNumbers(index)
       nodes.push(
-        <h4 key={`s-${index}`} className="mt-3 text-sm font-semibold text-cyan-200">
+        <h4 key={`s-${index}`} className="mt-3 text-sm font-semibold text-cyan-700 dark:text-cyan-200">
           {renderInline(line, `s-${index}`)}
         </h4>
       )
@@ -214,7 +214,7 @@ export function renderAssistantContent(text: string): JSX.Element[] {
     flushBullets(index)
     flushNumbers(index)
     nodes.push(
-      <p key={`p-${index}`} className="text-sm leading-relaxed text-slate-300">
+      <p key={`p-${index}`} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
         {renderInline(line, `p-${index}`)}
       </p>
     )

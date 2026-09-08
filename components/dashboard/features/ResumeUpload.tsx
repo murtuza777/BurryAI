@@ -209,23 +209,23 @@ export default function ResumeUpload({
     : 'No resume uploaded'
 
   const statusColor = hasExistingResume
-    ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100'
-    : 'border-amber-400/30 bg-amber-400/10 text-amber-100'
+    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-100'
+    : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-100'
 
   return (
-    <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.10),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(34,211,238,0.10),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(2,6,23,0.76))] shadow-[0_14px_44px_rgba(2,6,23,0.38)]">
+    <section className="overflow-hidden rounded-[1.25rem] border border-cyan-500/20 bg-white/80 shadow-xs dark:bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.10),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(34,211,238,0.10),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(2,6,23,0.76))] dark:shadow-[0_14px_44px_rgba(2,6,23,0.38)]">
       <button
         type="button"
         onClick={() => setExpanded((p) => !p)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 transition hover:bg-white/[0.02]"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 transition hover:bg-slate-50 dark:hover:bg-white/[0.02]"
       >
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/30 to-cyan-500/30 shadow-inner">
-            <Sparkles className="h-4.5 w-4.5 text-violet-200" />
+            <Sparkles className="h-4.5 w-4.5 text-violet-600 dark:text-violet-200" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-slate-100">AI Resume Matching</p>
-            <p className="text-xs text-slate-400">Upload your resume for personalized job discovery</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI Resume Matching</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Upload your resume for personalized job discovery</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -239,24 +239,24 @@ export default function ResumeUpload({
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-800/60 px-4 py-4 space-y-4">
+        <div className="border-t border-slate-100 dark:border-slate-800/60 px-4 py-4 space-y-4">
           {isGuest && (
-            <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-100">
+            <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-100">
               Sign up to use AI resume matching.
             </div>
           )}
 
           {error && (
-            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-200 flex items-start gap-2">
+            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-700 dark:text-rose-200 flex items-start gap-2">
               <X className="h-4 w-4 mt-0.5 shrink-0" />
               {error}
             </div>
           )}
 
           {hasExistingResume && existingSummary && stage === 'idle' && (
-            <div className="rounded-xl border border-slate-800/70 bg-slate-950/50 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-2">Current Resume Summary</p>
-              <p className="text-sm text-slate-300 leading-relaxed">{existingSummary}</p>
+            <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 dark:border-slate-800/70 dark:bg-slate-950/50">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-2">Current Resume Summary</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{existingSummary}</p>
             </div>
           )}
 

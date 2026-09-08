@@ -373,25 +373,25 @@ function ThreadCard(props: {
       tabIndex={0}
       className={`w-full rounded-[1.1rem] border px-2.5 py-2.5 text-left transition ${
         active
-          ? "border-cyan-400/35 bg-cyan-500/10 shadow-[0_18px_40px_rgba(8,145,178,0.18)]"
-          : "border-slate-800/80 bg-slate-950/75 hover:border-slate-700 hover:bg-slate-900/90"
+          ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-950 shadow-xs dark:border-cyan-400/35 dark:bg-cyan-500/10 dark:text-white"
+          : "border-slate-200/90 bg-white/70 hover:border-slate-300 hover:bg-white dark:border-slate-800/80 dark:bg-slate-950/75 dark:hover:border-slate-700 dark:hover:bg-slate-900/90"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="line-clamp-2 text-[11px] font-medium text-slate-100">{thread.title}</p>
+        <p className="line-clamp-2 text-[11px] font-medium text-slate-900 dark:text-slate-100">{thread.title}</p>
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation()
             onDelete()
           }}
-          className="rounded p-0.5 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300"
+          className="rounded p-0.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-300"
           title="Delete chat"
         >
           <Trash2 className="h-3 w-3" />
         </button>
       </div>
-      <p className="mt-1.5 text-[10px] text-slate-500">
+      <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
         {thread.messages.length} messages | {formatThreadTime(thread.updatedAt)}
       </p>
     </div>
@@ -423,17 +423,17 @@ function AdvisorSidebar({
     <aside
       className={
         isMobile
-          ? "flex h-full w-full max-w-[320px] flex-col border-r border-slate-800/80 bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.98))] shadow-[0_24px_80px_rgba(2,6,23,0.55)]"
-          : "hidden h-full min-h-0 flex-col rounded-[2rem] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.97))] shadow-[0_20px_60px_rgba(2,6,23,0.55)] lg:flex"
+          ? "flex h-full w-full max-w-[320px] flex-col border-r border-slate-200/90 bg-white shadow-2xl dark:border-slate-800/80 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.98))] dark:shadow-[0_24px_80px_rgba(2,6,23,0.55)]"
+          : "hidden h-full min-h-0 flex-col rounded-[2rem] border border-slate-200/90 bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.06)] backdrop-blur-xl dark:border-slate-800/80 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.97))] dark:shadow-[0_20px_60px_rgba(2,6,23,0.55)] lg:flex"
       }
     >
-      <div className={`border-b border-slate-800/80 ${isMobile ? "px-3 py-3" : "px-3 py-3"}`}>
+      <div className={`border-b border-slate-100 dark:border-slate-800/80 ${isMobile ? "px-3 py-3" : "px-3 py-3"}`}>
         {onClose ? (
           <div className="mb-2 flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/85 text-slate-200 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/85 dark:text-slate-200"
               title="Close chats"
               aria-label="Close chats"
             >
@@ -445,7 +445,7 @@ function AdvisorSidebar({
         <button
           type="button"
           onClick={onCreateThread}
-          className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-500/15"
+          className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-2 text-xs font-medium text-cyan-800 hover:bg-cyan-500/20 dark:text-cyan-100 dark:hover:bg-cyan-500/15 transition"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" />
           New Chat
@@ -508,22 +508,22 @@ function AdvisorConversationPanel({
 }: AdvisorConversationPanelProps) {
   return (
     <section
-      className={`flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-slate-800/80 bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.97))] shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
+      className={`flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-slate-200/90 bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.06)] backdrop-blur-xl dark:border-slate-800/80 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(8,15,30,0.97))] dark:shadow-[0_20px_60px_rgba(2,6,23,0.55)] ${
         isFullscreen ? "h-full" : "min-h-[32rem] sm:min-h-[38rem] lg:h-[calc(100svh-11rem)]"
       }`}
     >
-      <div className="shrink-0 border-b border-slate-800/80 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(15,23,42,0.58))] px-3 py-3 sm:px-4">
+      <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 px-3 py-3 sm:px-4 dark:border-slate-800/80 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(15,23,42,0.58))]">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <AdvisorBrandMark />
-            <h3 className="truncate text-sm font-semibold text-slate-100 sm:text-base">BurryAI Advisor</h3>
+            <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100 sm:text-base">BurryAI Advisor</h3>
           </div>
 
           {showSidebarToggle ? (
             <button
               type="button"
               onClick={onToggleSidebar}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/85 text-slate-200 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/85 dark:text-slate-200"
               title={sidebarOpen ? "Hide chats" : "Show chats"}
               aria-label={sidebarOpen ? "Hide chats" : "Show chats"}
             >
@@ -534,14 +534,14 @@ function AdvisorConversationPanel({
       </div>
 
       {isLoading ? (
-        <div className="shrink-0 flex items-center gap-2 border-b border-slate-800 bg-slate-950/60 px-4 py-2 text-xs text-cyan-200 sm:px-5">
+        <div className="shrink-0 flex items-center gap-2 border-b border-slate-200 bg-slate-100/70 px-4 py-2 text-xs text-cyan-700 dark:border-slate-800 dark:bg-slate-950/60 dark:text-cyan-200 sm:px-5">
           <Search className="h-3.5 w-3.5 animate-pulse" />
           {AGENT_STEPS[agentStep]}
         </div>
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        <div className="hide-scrollbar h-full overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.08),transparent_30%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.08),transparent_24%),linear-gradient(180deg,rgba(15,23,42,0.32),rgba(2,6,23,0.22))] p-4 sm:p-5">
+        <div className="hide-scrollbar h-full overflow-y-auto bg-slate-50/40 p-4 sm:p-5 dark:bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.08),transparent_30%),radial-gradient(circle_at_bottom,rgba(16,185,129,0.08),transparent_24%),linear-gradient(180deg,rgba(15,23,42,0.32),rgba(2,6,23,0.22))]">
           <div className="space-y-4">
             {activeMessages.map((message) => (
               <div
@@ -549,10 +549,10 @@ function AdvisorConversationPanel({
                 className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
               >
                 <div
-                  className={`max-w-[90%] px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.18)] sm:max-w-[84%] ${
+                  className={`max-w-[90%] px-4 py-3 shadow-xs sm:max-w-[84%] ${
                     message.role === "assistant"
-                      ? "rounded-[1.6rem] rounded-bl-md border border-slate-800/60 bg-slate-900/92 text-slate-100"
-                      : "rounded-[1.6rem] rounded-br-md bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-white"
+                      ? "rounded-[1.6rem] rounded-bl-md border border-slate-200/90 bg-white text-slate-800 dark:border-slate-800/60 dark:bg-slate-900/92 dark:text-slate-100"
+                      : "rounded-[1.6rem] rounded-br-md bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-white shadow-xs"
                   }`}
                 >
                   {message.role === "assistant" ? (
@@ -561,7 +561,7 @@ function AdvisorConversationPanel({
                         <button
                           type="button"
                           onClick={() => setOpenTraceId((prev) => (prev === message.id ? null : message.id))}
-                          className="absolute right-0 top-0 inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-cyan-200"
+                          className="absolute right-0 top-0 inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-slate-600 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:text-cyan-200"
                           title="Show agent details"
                           aria-label="Show agent details"
                         >
@@ -574,18 +574,18 @@ function AdvisorConversationPanel({
                       </div>
 
                       {openTraceId === message.id && message.meta ? (
-                        <div className="mt-3 space-y-2 rounded-xl border border-cyan-500/20 bg-slate-950/70 p-3 text-xs text-slate-300">
+                        <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-cyan-500/20 dark:bg-slate-950/70 dark:text-slate-300">
                           <p>
-                            <span className="text-slate-400">Intent:</span> {message.meta.intent}
+                            <span className="text-slate-500 dark:text-slate-400">Intent:</span> {message.meta.intent}
                           </p>
                           <p>
-                            <span className="text-slate-400">Model:</span> {normalizeModelName(message.modelUsed)}
+                            <span className="text-slate-500 dark:text-slate-400">Model:</span> {normalizeModelName(message.modelUsed)}
                           </p>
                           <p>
-                            <span className="text-slate-400">RAG:</span> {message.meta.rag.knowledge_count} knowledge chunks, {message.meta.rag.web_count} web results, search triggered: {message.meta.rag.web_search_triggered ? "yes" : "no"}
+                            <span className="text-slate-500 dark:text-slate-400">RAG:</span> {message.meta.rag.knowledge_count} knowledge chunks, {message.meta.rag.web_count} web results, search triggered: {message.meta.rag.web_search_triggered ? "yes" : "no"}
                           </p>
                           <p>
-                            <span className="text-slate-400">Tools:</span>{" "}
+                            <span className="text-slate-500 dark:text-slate-400">Tools:</span>{" "}
                             {message.meta.usedTools.join(", ") || "none"}
                           </p>
 
@@ -657,7 +657,7 @@ function AdvisorConversationPanel({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-slate-800/70 bg-[linear-gradient(180deg,rgba(2,6,23,0.72),rgba(2,6,23,0.96))] p-3 sm:p-4">
+      <div className="shrink-0 border-t border-slate-100 bg-white/95 p-3 sm:p-4 dark:border-slate-800/70 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.72),rgba(2,6,23,0.96))]">
         {activeMessages.length <= 2 ? (
           <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible sm:pb-3">
             {QUICK_PROMPTS.map((prompt) => (
@@ -665,7 +665,7 @@ function AdvisorConversationPanel({
                 key={prompt}
                 onClick={() => void onSendMessage(prompt)}
                 disabled={isLoading}
-                className="shrink-0 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100 transition hover:bg-cyan-500/15 disabled:opacity-40"
+                className="shrink-0 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-800 transition hover:bg-cyan-500/20 dark:text-cyan-100 dark:hover:bg-cyan-500/15 disabled:opacity-40"
               >
                 {prompt}
               </button>
@@ -679,17 +679,17 @@ function AdvisorConversationPanel({
             onChange={(event) => onInputChange(event.target.value)}
             onSubmit={() => void onSendMessage()}
             loading={isLoading}
-            className="border-slate-700/70 bg-slate-900/90 shadow-[0_14px_30px_rgba(2,6,23,0.28)] focus-within:border-cyan-400/40 focus-within:ring-cyan-400/15"
+            className="border-slate-200 bg-slate-50/90 shadow-xs focus-within:border-cyan-500/40 focus-within:ring-cyan-500/15 dark:border-slate-700/70 dark:bg-slate-900/90 dark:shadow-[0_14px_30px_rgba(2,6,23,0.28)]"
           >
             <ChatInputTextArea
               ref={inputRef}
               placeholder="Message BurryAI..."
               disabled={!hydrated}
-              className="bg-transparent px-2 py-2 text-[15px] text-slate-100 placeholder:text-slate-500"
+              className="bg-transparent px-2 py-2 text-[15px] text-slate-900 placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             <ChatInputSubmit
               disabled={!hydrated || !inputMessage.trim()}
-              className="border-cyan-400/20 bg-gradient-to-r from-cyan-500 to-sky-500 text-white hover:from-cyan-400 hover:to-sky-400"
+              className="border-cyan-500/30 bg-gradient-to-r from-cyan-500 to-sky-500 text-white hover:from-cyan-400 hover:to-sky-400"
             />
           </ChatInput>
         </div>

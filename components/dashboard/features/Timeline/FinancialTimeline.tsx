@@ -4,6 +4,7 @@ import { Line } from 'react-chartjs-2'
 import '@/lib/chartjs-register'
 import { Calendar, DollarSign, TrendingUp, Clock, AlertCircle } from 'lucide-react'
 import { format, addMonths } from 'date-fns'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface TimelineProps {
   userData: {
@@ -22,6 +23,7 @@ interface TimelineProps {
 }
 
 export function FinancialTimeline({ userData }: TimelineProps) {
+  const { resolvedTheme } = useTheme()
   const [timeframe, setTimeframe] = useState('1year')
   const baseMonthlyPayment = Math.max(
     userData.loans.reduce((sum, loan) => sum + loan.minimum_payment, 0),
@@ -107,30 +109,33 @@ export function FinancialTimeline({ userData }: TimelineProps) {
       ? 'Some loans are still in deferment or grace period. The chart helps you see how balances move before regular payments begin.'
       : 'Track your payoff path and compare what happens when you pay more each month.'
 
+  const chartTextColor = resolvedTheme === 'dark' ? '#cbd5e1' : '#334155'
+  const chartGridColor = resolvedTheme === 'dark' ? 'rgba(148, 163, 184, 0.18)' : 'rgba(148, 163, 184, 0.12)'
+
   return (
     <div className="space-y-6">
       {userData.loans.length === 0 ? (
         <HolographicCard>
-          <p className="text-sm text-slate-300">No loans found yet. Add loan entries to generate a timeline.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-300">No loans found yet. Add loan entries to generate a timeline.</p>
         </HolographicCard>
       ) : null}
       {/* Timeline Controls */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <HolographicButton
           onClick={() => setTimeframe('1year')}
-          className={timeframe === '1year' ? 'bg-cyan-300 text-slate-950 font-semibold border-cyan-200' : ''}
+          className={timeframe === '1year' ? 'bg-cyan-500 text-white font-semibold border-cyan-400 shadow-xs dark:bg-cyan-300 dark:text-slate-950 dark:border-cyan-200' : ''}
         >
           1 Year
         </HolographicButton>
         <HolographicButton
           onClick={() => setTimeframe('3years')}
-          className={timeframe === '3years' ? 'bg-cyan-300 text-slate-950 font-semibold border-cyan-200' : ''}
+          className={timeframe === '3years' ? 'bg-cyan-500 text-white font-semibold border-cyan-400 shadow-xs dark:bg-cyan-300 dark:text-slate-950 dark:border-cyan-200' : ''}
         >
           3 Years
         </HolographicButton>
         <HolographicButton
           onClick={() => setTimeframe('5years')}
-          className={timeframe === '5years' ? 'bg-cyan-300 text-slate-950 font-semibold border-cyan-200' : ''}
+          className={timeframe === '5years' ? 'bg-cyan-500 text-white font-semibold border-cyan-400 shadow-xs dark:bg-cyan-300 dark:text-slate-950 dark:border-cyan-200' : ''}
         >
           5 Years
         </HolographicButton>
@@ -138,11 +143,11 @@ export function FinancialTimeline({ userData }: TimelineProps) {
 
       {/* Main Timeline Chart */}
       <HolographicCard>
-        <h3 className="mb-4 flex items-center text-xl font-semibold">
-          <Calendar className="w-6 h-6 text-cyan-500 mr-2" />
+        <h3 className="mb-4 flex items-center text-xl font-semibold text-slate-900 dark:text-white">
+          <Calendar className="w-6 h-6 text-cyan-600 dark:text-cyan-400 mr-2" />
           {timelineHeadline}
         </h3>
-        <p className="mb-4 text-sm text-slate-300">{timelineSupportCopy}</p>
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">{timelineSupportCopy}</p>
         <div className="h-[280px] sm:h-[400px]">
           <Line
             data={{
@@ -174,21 +179,21 @@ export function FinancialTimeline({ userData }: TimelineProps) {
               plugins: {
                 legend: {
                   position: 'top',
-                  labels: { color: '#cbd5e1' }
+                  labels: { color: chartTextColor }
                 }
               },
               scales: {
                 y: {
                   beginAtZero: true,
-                  grid: { color: 'rgba(148, 163, 184, 0.18)' },
+                  grid: { color: chartGridColor },
                   ticks: { 
-                    color: '#cbd5e1',
+                    color: chartTextColor,
                     callback: (value) => `$${value.toLocaleString()}`
                   }
                 },
                 x: {
-                  grid: { color: 'rgba(148, 163, 184, 0.14)' },
-                  ticks: { color: '#cbd5e1' }
+                  grid: { color: chartGridColor },
+                  ticks: { color: chartTextColor }
                 }
               }
             }}
@@ -201,66 +206,66 @@ export function FinancialTimeline({ userData }: TimelineProps) {
         <HolographicCard>
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-slate-400 text-sm">Total Interest</h4>
-              <p className="text-2xl font-bold">
+              <h4 className="text-slate-500 dark:text-slate-400 text-sm">Total Interest</h4>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 ${timelineData.reduce((sum, d) => sum + d.interest, 0).toLocaleString()}
               </p>
             </div>
-            <DollarSign className="w-8 h-8 text-cyan-500" />
+            <DollarSign className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />
           </div>
         </HolographicCard>
 
         <HolographicCard>
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-slate-400 text-sm">Payoff Progress</h4>
-              <p className="text-2xl font-bold">
+              <h4 className="text-slate-500 dark:text-slate-400 text-sm">Payoff Progress</h4>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {payoffProgress}%
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-cyan-500" />
+            <TrendingUp className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />
           </div>
         </HolographicCard>
 
         <HolographicCard>
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-slate-400 text-sm">Time Remaining</h4>
-              <p className="text-2xl font-bold">
+              <h4 className="text-slate-500 dark:text-slate-400 text-sm">Time Remaining</h4>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {standardPayoffMonth} months
               </p>
             </div>
-            <Clock className="w-8 h-8 text-cyan-500" />
+            <Clock className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />
           </div>
         </HolographicCard>
       </div>
 
       <HolographicCard>
-        <h3 className="mb-4 text-xl font-semibold text-slate-100">Student Loan Planner</h3>
+        <h3 className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Student Loan Planner</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-4">
-            <p className="text-sm text-slate-400">Loans in deferment</p>
-            <p className="mt-2 text-2xl font-bold text-slate-100">{loansInDeferment.length}</p>
-            <p className="mt-2 text-sm text-slate-300">
+          <div className="rounded-xl border border-slate-200/90 bg-white/70 p-4 shadow-2xs dark:border-slate-700/60 dark:bg-slate-900/60">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Loans in deferment</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">{loansInDeferment.length}</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               {loansInDeferment.length > 0
                 ? 'These loans can stay in your plan even before repayment starts.'
                 : 'All saved loans currently have a monthly payment amount.'}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-4">
-            <p className="text-sm text-slate-400">Next key date</p>
-            <p className="mt-2 text-lg font-semibold text-slate-100">
+          <div className="rounded-xl border border-slate-200/90 bg-white/70 p-4 shadow-2xs dark:border-slate-700/60 dark:bg-slate-900/60">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Next key date</p>
+            <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
               {nextDueLoan?.due_date ? format(new Date(nextDueLoan.due_date), 'MMM d, yyyy') : 'Set your first due date'}
             </p>
-            <p className="mt-2 text-sm text-slate-300">
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               {nextDueLoan?.loan_name
                 ? `${nextDueLoan.loan_name} is the next scheduled payment in your plan.`
                 : 'Add a first payment date in Profile to make the timeline more precise.'}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-4">
-            <p className="text-sm text-slate-400">Suggested student action</p>
-            <p className="mt-2 text-sm text-slate-300">
+          <div className="rounded-xl border border-slate-200/90 bg-white/70 p-4 shadow-2xs dark:border-slate-700/60 dark:bg-slate-900/60">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Suggested student action</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               {monthlyPayment > 0
                 ? 'Keep minimums on track, then use the simulator below to test an extra $200 strategy.'
                 : 'If payments have not started, save the expected first payment date so BurryAI can build a better repayment plan.'}
@@ -271,26 +276,26 @@ export function FinancialTimeline({ userData }: TimelineProps) {
 
       {/* Payment Impact Simulator */}
       <HolographicCard>
-        <h3 className="mb-4 flex items-center text-xl font-semibold">
-          <AlertCircle className="w-6 h-6 text-cyan-500 mr-2" />
+        <h3 className="mb-4 flex items-center text-xl font-semibold text-slate-900 dark:text-white">
+          <AlertCircle className="w-6 h-6 text-cyan-600 dark:text-cyan-400 mr-2" />
           Payment Impact Simulator
         </h3>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="space-y-4">
-            <h4 className="font-semibold">Standard Payment Plan</h4>
-            <p className="text-slate-300">Monthly Payment: ${monthlyPayment.toLocaleString()}</p>
-            <p className="text-slate-300">Total Interest: ${Math.round(totalInterest).toLocaleString()}</p>
-            <p className="text-slate-300">Payoff Date: {payoffDate}</p>
+            <h4 className="font-semibold text-slate-900 dark:text-white">Standard Payment Plan</h4>
+            <p className="text-slate-600 dark:text-slate-300">Monthly Payment: ${monthlyPayment.toLocaleString()}</p>
+            <p className="text-slate-600 dark:text-slate-300">Total Interest: ${Math.round(totalInterest).toLocaleString()}</p>
+            <p className="text-slate-600 dark:text-slate-300">Payoff Date: {payoffDate}</p>
             {monthlyPayment === 0 ? (
-              <p className="text-amber-300">No active monthly payments are set yet, so this view is showing balance growth only.</p>
+              <p className="text-amber-600 dark:text-amber-300">No active monthly payments are set yet, so this view is showing balance growth only.</p>
             ) : null}
           </div>
           <div className="space-y-4">
-            <h4 className="font-semibold">With Extra Payments</h4>
-            <p className="text-cyan-300">Monthly Payment: ${extraPayment.toLocaleString()}</p>
-            <p className="text-cyan-300">Total Interest: ${Math.round(totalInterestWithExtra).toLocaleString()}</p>
-            <p className="text-cyan-300">Payoff Date: {payoffDateWithExtra}</p>
-            <p className="text-emerald-400">You could save ${interestSavings.toLocaleString()}!</p>
+            <h4 className="font-semibold text-slate-900 dark:text-white">With Extra Payments</h4>
+            <p className="text-cyan-700 dark:text-cyan-300">Monthly Payment: ${extraPayment.toLocaleString()}</p>
+            <p className="text-cyan-700 dark:text-cyan-300">Total Interest: ${Math.round(totalInterestWithExtra).toLocaleString()}</p>
+            <p className="text-cyan-700 dark:text-cyan-300">Payoff Date: {payoffDateWithExtra}</p>
+            <p className="text-emerald-600 dark:text-emerald-400 font-semibold">You could save ${interestSavings.toLocaleString()}!</p>
           </div>
         </div>
       </HolographicCard>

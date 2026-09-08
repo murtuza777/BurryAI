@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { Doughnut } from 'react-chartjs-2'
 import '@/lib/chartjs-register'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
   getCostAnalysis,
   getLatestCostPlan,
@@ -87,6 +88,7 @@ function progressLabel(plan: CostPlan): string {
 
 export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
   const router = useRouter()
+  const { resolvedTheme } = useTheme()
   const [showIntro, setShowIntro] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState<CostAnalysisResponse | null>(null)
   const [savedPlan, setSavedPlan] = useState<CostPlan | null>(null)
@@ -297,57 +299,57 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
             </Button>
           </div>
           <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                <Target className="h-4 w-4 text-orange-300" />
+            <div className="rounded-2xl border border-slate-200/90 bg-white/70 p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-950/70">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <Target className="h-4 w-4 text-orange-400" />
                 Spending load
               </div>
-              <p className="mt-3 text-3xl font-semibold text-white">
+              <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">
                 {monthlyIncome > 0 ? `${((totalExpenses / monthlyIncome) * 100).toFixed(1)}%` : '0%'}
               </p>
-              <p className="mt-2 text-sm text-slate-400">Of your income is already assigned to saved categories.</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Of your income is already assigned to saved categories.</p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                <PiggyBank className="h-4 w-4 text-emerald-300" />
+            <div className="rounded-2xl border border-slate-200/90 bg-white/70 p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-950/70">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <PiggyBank className="h-4 w-4 text-emerald-500 dark:text-emerald-300" />
                 Current savings room
               </div>
-              <p className="mt-3 text-3xl font-semibold text-white">{savingsRate.toFixed(1)}%</p>
-              <p className="mt-2 text-sm text-slate-400">Income left after the categories you saved.</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{savingsRate.toFixed(1)}%</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Income left after the categories you saved.</p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                <Scissors className="h-4 w-4 text-cyan-300" />
+            <div className="rounded-2xl border border-slate-200/90 bg-white/70 p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-950/70">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <Scissors className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
                 Quick cut estimate
               </div>
-              <p className="mt-3 text-3xl font-semibold text-white">{formatCurrency(estimatedCut)}</p>
-              <p className="mt-2 text-sm text-slate-400">A flat 10% trim across saved categories before AI advice.</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{formatCurrency(estimatedCut)}</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">A flat 10% trim across saved categories before AI advice.</p>
             </div>
           </div>
         </HolographicCard>
 
-        <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
-          <div className="border-b border-slate-800/70 px-5 py-4">
+        <HolographicCard className="!p-0 overflow-hidden border border-slate-200/90 dark:border-slate-800/80">
+          <div className="border-b border-slate-100 dark:border-slate-800/70 px-5 py-4">
             <div className="flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-orange-300" />
-              <h3 className="text-lg font-semibold text-white">Biggest pressure point</h3>
+              <TrendingDown className="h-5 w-5 text-orange-400" />
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Biggest pressure point</h3>
             </div>
-            <p className="mt-1 text-sm text-slate-400">Start here if you want the fastest improvement.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Start here if you want the fastest improvement.</p>
           </div>
           <div className="p-5">
             {topCategory ? (
-              <div className="rounded-[24px] border border-orange-400/20 bg-orange-500/8 p-5">
-                <p className="text-xs uppercase tracking-[0.24em] text-orange-300/80">Largest category</p>
-                <p className="mt-3 text-2xl font-semibold text-white">{topCategory.category}</p>
-                <p className="mt-2 text-lg text-slate-200">{formatCurrency(topCategory.amount)}</p>
-                <p className="mt-3 text-sm leading-6 text-slate-300">
+              <div className="rounded-[24px] border border-orange-400/25 bg-orange-500/8 p-5">
+                <p className="text-xs uppercase tracking-[0.24em] font-semibold text-orange-600 dark:text-orange-300/80">Largest category</p>
+                <p className="mt-3 text-2xl font-semibold text-slate-900 dark:text-white">{topCategory.category}</p>
+                <p className="mt-2 text-lg text-slate-700 dark:text-slate-200">{formatCurrency(topCategory.amount)}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
                   This category alone takes{' '}
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-slate-900 dark:text-white">
                     {monthlyIncome > 0 ? `${((topCategory.amount / monthlyIncome) * 100).toFixed(1)}%` : '0%'}
                   </span>{' '}
                   of your monthly income.
                 </p>
-                <div className="mt-4 inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                <div className="mt-4 inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-200">
                   A 10% trim here saves {formatCurrency(topCategory.amount * 0.1)}
                 </div>
               </div>
@@ -359,10 +361,10 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
-          <div className="border-b border-slate-800/70 px-5 py-4">
-            <h3 className="text-lg font-semibold text-white">Where your money goes</h3>
-            <p className="mt-1 text-sm text-slate-400">Only the categories saved in Profile are shown here.</p>
+        <HolographicCard className="!p-0 overflow-hidden border border-slate-200/90 dark:border-slate-800/80">
+          <div className="border-b border-slate-100 dark:border-slate-800/70 px-5 py-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Where your money goes</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Only the categories saved in Profile are shown here.</p>
           </div>
           <div className="h-[280px] p-5 sm:h-[340px]">
             {expenseCategories.length > 0 ? (
@@ -376,7 +378,7 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
                     legend: {
                       position: 'bottom',
                       labels: {
-                        color: '#cbd5e1',
+                        color: resolvedTheme === 'dark' ? '#cbd5e1' : '#334155',
                         padding: 18,
                         usePointStyle: true,
                         pointStyleWidth: 10
@@ -386,19 +388,19 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
                 }}
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
                 No saved spending categories yet.
               </div>
             )}
           </div>
         </HolographicCard>
 
-        <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
-          <div className="border-b border-slate-800/70 px-5 py-4">
-            <h3 className="text-lg font-semibold text-white">Saved category list</h3>
-            <p className="mt-1 text-sm text-slate-400">Use this to see what is worth cutting before you run AI.</p>
+        <HolographicCard className="!p-0 overflow-hidden border border-slate-200/90 dark:border-slate-800/80">
+          <div className="border-b border-slate-100 dark:border-slate-800/70 px-5 py-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Saved category list</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Use this to see what is worth cutting before you run AI.</p>
           </div>
-          <div className="divide-y divide-slate-800/70">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
             {expenseCategories.length > 0 ? (
               expenseCategories.map((category) => {
                 const Icon = category.icon
@@ -407,26 +409,26 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
                 return (
                   <div key={category.category} className="flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/80">
-                        <Icon className="h-4 w-4 text-orange-300" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/80">
+                        <Icon className="h-4 w-4 text-orange-400" />
                       </div>
                       <div>
-                        <p className="text-base font-medium text-white">{category.category}</p>
-                        <p className="mt-1 text-sm text-slate-400">
+                        <p className="text-base font-medium text-slate-900 dark:text-white">{category.category}</p>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                           {shareOfIncome.toFixed(1)}% of income
                           {' '}| Suggested first-pass cut {formatCurrency(category.suggestedCut)}
                         </p>
                       </div>
                     </div>
                     <div className="text-left md:text-right">
-                      <p className="text-lg font-semibold text-white">{formatCurrency(category.amount)}</p>
-                      <p className="mt-1 text-sm text-slate-400">{category.percentage.toFixed(1)}% of saved spending</p>
+                      <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatCurrency(category.amount)}</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{category.percentage.toFixed(1)}% of saved spending</p>
                     </div>
                   </div>
                 )
               })
             ) : (
-              <div className="px-5 py-8 text-sm text-slate-400">
+              <div className="px-5 py-8 text-sm text-slate-500 dark:text-slate-400">
                 Add categories like food, travel, housing, subscriptions, or shopping in Profile to start using Cost Cutter.
               </div>
             )}
@@ -434,18 +436,18 @@ export function CostCutter({ userData, isGuest = false }: CostCutterProps) {
         </HolographicCard>
       </div>
 
-      <HolographicCard className="!p-0 overflow-hidden border border-slate-800/80">
-        <div className="border-b border-slate-800/70 px-5 py-4">
+      <HolographicCard className="!p-0 overflow-hidden border border-slate-200/90 dark:border-slate-800/80">
+        <div className="border-b border-slate-100 dark:border-slate-800/70 px-5 py-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white">AI cost-cutting plan</h3>
-              <p className="mt-1 text-sm text-slate-400">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI cost-cutting plan</h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Personalized savings ideas based only on your saved income and category totals.
               </p>
             </div>
             {(aiAnalysis?.model_used ?? savedPlan?.model_used) ? (
-              <div className="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1 text-xs text-slate-300">
-                <Sparkles className="mr-2 h-3.5 w-3.5 text-orange-300" />
+              <div className="inline-flex items-center rounded-full border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
+                <Sparkles className="mr-2 h-3.5 w-3.5 text-orange-400" />
                 {formatModelUsed(aiAnalysis?.model_used ?? savedPlan?.model_used)}
               </div>
             ) : null}
