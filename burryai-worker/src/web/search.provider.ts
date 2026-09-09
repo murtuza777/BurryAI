@@ -24,6 +24,7 @@ type SerperResponse = {
     title?: string
     link?: string
     snippet?: string
+    date?: string
   }>
 }
 
@@ -81,17 +82,27 @@ async function searchWithTavily(query: string, apiKey: string, topK: number): Pr
   )
 }
 
-async function searchWithSerper(query: string, apiKey: string, topK: number): Promise<AgentWebResult[]> {
+async function searchWithSerper(
+  query: string,
+  apiKey: string,
+  topK: number,
+  freshness: boolean = true
+): Promise<AgentWebResult[]> {
+  const bodyPayload: Record<string, unknown> = {
+    q: query,
+    num: topK
+  }
+  if (freshness) {
+    bodyPayload.tbs = "qdr:m" // past month for fresh active jobs
+  }
+
   const response = await fetch("https://google.serper.dev/search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-API-KEY": apiKey
     },
-    body: JSON.stringify({
-      q: query,
-      num: topK
-    })
+    body: JSON.stringify(bodyPayload)
   })
   if (!response.ok) return []
 
@@ -101,6 +112,7 @@ async function searchWithSerper(query: string, apiKey: string, topK: number): Pr
       title: item.title ?? "Untitled result",
       url: item.link ?? "",
       snippet: item.snippet ?? "",
+      date: item.date,
       source: "serper" as const
     })),
     topK
@@ -120,11 +132,15 @@ export async function searchWebByQuery(params: {
   env: SearchProviderEnv
   topK?: number
   cacheScope?: string
+  freshness?: boolean
 }): Promise<AgentWebResult[]> {
   const topK = Math.max(1, Math.min(params.topK ?? 3, 10))
   const provider = (params.env.provider?.toLowerCase() ?? "tavily") as ProviderName
   const normalizedQuery = params.query.trim()
   if (!normalizedQuery) return []
+
+  const isOpportunityScope = params.cacheScope?.trim() === "opportunities"
+  const isFresh = params.freshness ?? isOpportunityScope
 
   const scopePrefix = params.cacheScope?.trim() ? `${params.cacheScope.trim()}:` : ""
   const key = `${scopePrefix}${cacheKey(provider, normalizedQuery)}`
@@ -133,11 +149,11 @@ export async function searchWebByQuery(params: {
 
   let results: AgentWebResult[] = []
   if (provider === "serper" && params.env.serperApiKey) {
-    results = await searchWithSerper(normalizedQuery, params.env.serperApiKey, topK)
+    results = await searchWithSerper(normalizedQuery, params.env.serperApiKey, topK, isFresh)
   } else if (params.env.tavilyApiKey) {
     results = await searchWithTavily(normalizedQuery, params.env.tavilyApiKey, topK)
   } else if (params.env.serperApiKey) {
-    results = await searchWithSerper(normalizedQuery, params.env.serperApiKey, topK)
+    results = await searchWithSerper(normalizedQuery, params.env.serperApiKey, topK, isFresh)
   }
 
   writeCache(key, results)
