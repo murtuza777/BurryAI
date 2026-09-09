@@ -42,6 +42,7 @@ export type AgentWebResult = {
   url: string
   snippet: string
   source: "tavily" | "serper" | "none"
+  date?: string
 }
 
 export type AgentState = {

@@ -380,6 +380,7 @@ export interface OpportunitySearchResponse {
     match_reasons: string[]
     near_user_location: boolean
     remote_friendly: boolean
+    posted_date?: string
   }>
   filters_applied: {
     mode: "local" | "remote" | "hybrid"
