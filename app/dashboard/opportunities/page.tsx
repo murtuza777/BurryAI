@@ -1,16 +1,18 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowRight,
   Briefcase,
   ChevronDown,
   ChevronUp,
+  Clock,
   Building2,
   ExternalLink,
   Filter,
   GraduationCap,
+  Loader2,
   MapPin,
   PencilLine,
   Search,
@@ -221,15 +223,27 @@ export default function DashboardOpportunitiesPage() {
     maxResults: 42
   })
 
+  const filtersRef = useRef(filters)
+  filtersRef.current = filters
+  const hasInitializedRef = useRef(false)
+
+  const updateFilters = useCallback((updater: (prev: typeof filters) => typeof filters) => {
+    setFilters((prev) => {
+      const next = updater(prev)
+      filtersRef.current = next
+      return next
+    })
+  }, [])
+
   const hydrateProfileDraft = useCallback((profile: FinancialProfile) => {
     const nextDraft = buildOpportunityProfileDraft(profile)
     setProfileDraft(nextDraft)
-    setFilters((prev) => ({
+    updateFilters((prev) => ({
       ...prev,
       radiusKm: profile.opportunity_radius_km || 25
     }))
     return nextDraft
-  }, [])
+  }, [updateFilters])
 
   const refreshProfileDraft = useCallback(async () => {
     const profile = await getFinancialProfile()
@@ -252,15 +266,16 @@ export default function DashboardOpportunitiesPage() {
       setSearching(true)
       setError('')
       try {
+        const curFilters = filtersRef.current
         const payload = await searchOpportunities({
-          query: filters.query.trim() || undefined,
-          mode: filters.mode,
-          include_internships: filters.includeInternships,
-          include_part_time: filters.includePartTime,
-          include_freelance: filters.includeFreelance,
-          remote_regions: fromCsv(draft.remoteRegionsCsv),
-          radius_km: Number(filters.radiusKm || draft.radiusKm || 25),
-          max_results: Number(filters.maxResults || 42),
+          query: (overrides?.query !== undefined ? overrides.query : curFilters.query.trim()) || undefined,
+          mode: overrides?.mode || curFilters.mode,
+          include_internships: overrides?.include_internships ?? curFilters.includeInternships,
+          include_part_time: overrides?.include_part_time ?? curFilters.includePartTime,
+          include_freelance: overrides?.include_freelance ?? curFilters.includeFreelance,
+          remote_regions: overrides?.remote_regions ?? fromCsv(draft.remoteRegionsCsv),
+          radius_km: Number(overrides?.radius_km ?? curFilters.radiusKm ?? draft.radiusKm ?? 25),
+          max_results: Number(overrides?.max_results ?? curFilters.maxResults ?? 42),
           ...overrides
         })
         setSearchResult(payload)
@@ -273,7 +288,7 @@ export default function DashboardOpportunitiesPage() {
         setSearching(false)
       }
     },
-    [filters, isGuest]
+    [isGuest]
   )
 
   const runSearch = useCallback(
@@ -331,12 +346,15 @@ export default function DashboardOpportunitiesPage() {
       setLoading(false)
       return
     }
+    if (hasInitializedRef.current) return
+    hasInitializedRef.current = true
 
     const run = async () => {
       setLoading(true)
       setError('')
       try {
-        const nextDraft = await refreshProfileDraft()
+        const profile = await getFinancialProfile()
+        const nextDraft = hydrateProfileDraft(profile)
         if (
           isOpportunityProfileConfigured({
             profession: nextDraft.profession,
@@ -365,7 +383,7 @@ export default function DashboardOpportunitiesPage() {
     }
 
     void run()
-  }, [authLoading, isGuest, refreshProfileDraft, runSearchWithDraft])
+  }, [authLoading, isGuest, hydrateProfileDraft, runSearchWithDraft])
 
   const remoteRegions = useMemo(() => fromCsv(profileDraft.remoteRegionsCsv), [profileDraft.remoteRegionsCsv])
   const groupedResults = useMemo(() => {
@@ -517,7 +535,13 @@ export default function DashboardOpportunitiesPage() {
             <Input
               id="query"
               value={filters.query}
-              onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
+              onChange={(event) => updateFilters((prev) => ({ ...prev, query: event.target.value }))}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  void runSearch()
+                }
+              }}
               className="h-9 rounded-full border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100 dark:placeholder:text-slate-500"
               placeholder="Search role, skill, internship, company, or hiring phrase"
             />
@@ -575,7 +599,7 @@ export default function DashboardOpportunitiesPage() {
                       active={filters.mode === option.value}
                       label={option.label}
                       icon={option.icon}
-                      onClick={() => setFilters((prev) => ({ ...prev, mode: option.value }))}
+                      onClick={() => updateFilters((prev) => ({ ...prev, mode: option.value }))}
                     />
                   ))}
                 </div>
@@ -591,21 +615,21 @@ export default function DashboardOpportunitiesPage() {
                     active={filters.includeInternships}
                     label="Internships"
                     onClick={() =>
-                      setFilters((prev) => ({ ...prev, includeInternships: !prev.includeInternships }))
+                      updateFilters((prev) => ({ ...prev, includeInternships: !prev.includeInternships }))
                     }
                   />
                   <ToggleButton
                     active={filters.includePartTime}
                     label="Part-time"
                     onClick={() =>
-                      setFilters((prev) => ({ ...prev, includePartTime: !prev.includePartTime }))
+                      updateFilters((prev) => ({ ...prev, includePartTime: !prev.includePartTime }))
                     }
                   />
                   <ToggleButton
                     active={filters.includeFreelance}
                     label="Freelance"
                     onClick={() =>
-                      setFilters((prev) => ({ ...prev, includeFreelance: !prev.includeFreelance }))
+                      updateFilters((prev) => ({ ...prev, includeFreelance: !prev.includeFreelance }))
                     }
                   />
                 </div>
@@ -621,7 +645,7 @@ export default function DashboardOpportunitiesPage() {
                       key={radius}
                       active={filters.radiusKm === radius}
                       label={`${radius} km`}
-                      onClick={() => setFilters((prev) => ({ ...prev, radiusKm: radius }))}
+                      onClick={() => updateFilters((prev) => ({ ...prev, radiusKm: radius }))}
                     />
                   ))}
                 </div>
@@ -634,7 +658,7 @@ export default function DashboardOpportunitiesPage() {
                       key={count}
                       active={filters.maxResults === count}
                       label={`${count} listings`}
-                      onClick={() => setFilters((prev) => ({ ...prev, maxResults: count }))}
+                      onClick={() => updateFilters((prev) => ({ ...prev, maxResults: count }))}
                     />
                   ))}
                 </div>
@@ -649,9 +673,12 @@ export default function DashboardOpportunitiesPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Results</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-900 sm:text-xl dark:text-slate-100">
-                {searchResult ? `${searchResult.opportunities.length} matched listings` : 'No search run yet'}
-              </h3>
+              <div className="mt-1 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-slate-900 sm:text-xl dark:text-slate-100">
+                  {searchResult ? `${searchResult.opportunities.length} matched listings` : 'No search run yet'}
+                </h3>
+                {searching ? <Loader2 className="h-4 w-4 animate-spin text-cyan-500 dark:text-cyan-300" /> : null}
+              </div>
             </div>
             {searchResult ? (
               <Badge className="shrink-0 border-slate-200 bg-slate-100 text-slate-700 capitalize dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
@@ -717,6 +744,12 @@ export default function DashboardOpportunitiesPage() {
                                 <Badge className="border-slate-200 bg-slate-100 text-slate-700 capitalize dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                                   {item.listing_quality}
                                 </Badge>
+                                {item.posted_date ? (
+                                  <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-100 flex items-center gap-1 font-medium">
+                                    <Clock className="h-3 w-3" />
+                                    {item.posted_date}
+                                  </Badge>
+                                ) : null}
                                 {item.near_user_location ? (
                                   <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-100">
                                     Nearby match
