@@ -436,9 +436,9 @@ function AdvisorConversationPanel({
 
                           {message.meta.toolSummaries.length > 0 ? (
                             <div className="space-y-1">
-                              <p className="text-slate-400">Tool outputs:</p>
+                              <p className="font-medium text-slate-500 dark:text-slate-400">Tool outputs:</p>
                               {message.meta.toolSummaries.map((tool) => (
-                                <p key={`${message.id}-${tool.name}`}>
+                                <p key={`${message.id}-${tool.name}`} className="text-slate-700 dark:text-slate-300">
                                   {tool.name}: {tool.summary}
                                 </p>
                               ))}
@@ -447,9 +447,9 @@ function AdvisorConversationPanel({
 
                           {message.meta.knowledgeSources.length > 0 ? (
                             <div className="space-y-1">
-                              <p className="text-slate-400">Knowledge sources:</p>
+                              <p className="font-medium text-slate-500 dark:text-slate-400">Knowledge sources:</p>
                               {message.meta.knowledgeSources.map((source, index) => (
-                                <p key={`${message.id}-k-${index}`}>
+                                <p key={`${message.id}-k-${index}`} className="text-slate-700 dark:text-slate-300">
                                   {source.title} ({source.source})
                                 </p>
                               ))}
@@ -458,14 +458,14 @@ function AdvisorConversationPanel({
 
                           {message.meta.webSources.length > 0 ? (
                             <div className="space-y-1">
-                              <p className="text-slate-400">Web sources:</p>
+                              <p className="font-medium text-slate-500 dark:text-slate-400">Web sources:</p>
                               {message.meta.webSources.map((source, index) => (
-                                <p key={`${message.id}-w-${index}`}>
+                                <p key={`${message.id}-w-${index}`} className="text-slate-700 dark:text-slate-300">
                                   <a
                                     href={source.url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="break-all text-cyan-300 underline decoration-cyan-500/50 underline-offset-2"
+                                    className="break-all font-medium text-cyan-700 underline decoration-cyan-500/50 underline-offset-2 transition hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
                                   >
                                     {source.title || source.url}
                                   </a>{" "}
@@ -490,8 +490,8 @@ function AdvisorConversationPanel({
 
             {isLoading ? (
               <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-2xl border border-cyan-500/20 bg-slate-900 px-4 py-3 text-xs text-slate-300">
-                  <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700 shadow-xs dark:border-cyan-500/20 dark:bg-slate-900 dark:text-slate-300">
+                  <Loader2 className="h-4 w-4 animate-spin text-cyan-600 dark:text-cyan-400" />
                   Agent is working...
                 </div>
               </div>
@@ -950,25 +950,25 @@ export function AIAdvisor({
           />
         </>
       ) : !isFullscreen ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-white/80 px-3 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-950/70">
           <button
             type="button"
             onClick={createNewThread}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-800 hover:bg-cyan-500/20 sm:w-auto dark:text-cyan-200 dark:hover:bg-cyan-500/15"
           >
             <MessageSquarePlus className="h-3.5 w-3.5" />
             New Chat
           </button>
 
           <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <label htmlFor="chat-thread-select" className="text-xs text-slate-400">
+            <label htmlFor="chat-thread-select" className="text-xs text-slate-600 dark:text-slate-400">
               Chats
             </label>
             <select
               id="chat-thread-select"
               value={activeThread?.id ?? ""}
               onChange={(event) => setActiveThreadId(event.target.value)}
-              className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-200 sm:flex-none"
+              className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-800 sm:flex-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             >
               {sortedThreads.map((thread) => (
                 <option key={thread.id} value={thread.id}>
