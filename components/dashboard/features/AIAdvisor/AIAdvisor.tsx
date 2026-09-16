@@ -22,6 +22,7 @@ import {
   type AgentAdviceResponse
 } from "@/lib/financial-client"
 import { ChatInput, ChatInputSubmit, ChatInputTextArea } from "@/components/ui/chat-input"
+import { renderAssistantContent } from "@/components/dashboard/shared/render-assistant-content"
 
 function AdvisorBrandMark() {
   return (
@@ -71,11 +72,6 @@ interface AIAdvisorProps {
   layout?: "embedded" | "fullscreen"
   storageNamespace?: string
 }
-
-type InlineToken =
-  | { type: "text"; text: string }
-  | { type: "bold"; text: string }
-  | { type: "link"; text: string; href: string }
 
 type PersistedThread = Omit<ChatThread, "createdAt" | "updatedAt" | "messages"> & {
   createdAt: string
@@ -143,157 +139,6 @@ function normalizeModelName(modelUsed?: string): string {
   return modelUsed
 }
 
-function trimUrl(url: string): { href: string; text: string } {
-  const match = url.match(/^(.*?)([.,!?;:])?$/)
-  const href = match?.[1] ?? url
-  return { href, text: url }
-}
-
-function parseInline(text: string): InlineToken[] {
-  const tokens: InlineToken[] = []
-  const pattern = /\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g
-  let lastIndex = 0
-
-  for (const match of text.matchAll(pattern)) {
-    const index = match.index ?? 0
-    if (index > lastIndex) {
-      tokens.push({ type: "text", text: text.slice(lastIndex, index) })
-    }
-
-    if (match[1]) {
-      tokens.push({ type: "bold", text: match[1] })
-    } else if (match[2] && match[3]) {
-      tokens.push({ type: "link", text: match[2], href: match[3] })
-    } else if (match[4]) {
-      const normalized = trimUrl(match[4])
-      tokens.push({ type: "link", text: normalized.text, href: normalized.href })
-    }
-
-    lastIndex = index + match[0].length
-  }
-
-  if (lastIndex < text.length) {
-    tokens.push({ type: "text", text: text.slice(lastIndex) })
-  }
-
-  return tokens
-}
-
-function renderInline(text: string, keyPrefix: string): JSX.Element[] {
-  return parseInline(text).map((token, index) => {
-    if (token.type === "bold") {
-      return (
-        <strong key={`${keyPrefix}-b-${index}`} className="font-semibold text-slate-100">
-          {token.text}
-        </strong>
-      )
-    }
-
-    if (token.type === "link") {
-      return (
-        <a
-          key={`${keyPrefix}-l-${index}`}
-          href={token.href}
-          target="_blank"
-          rel="noreferrer"
-          className="break-all text-cyan-300 underline decoration-cyan-500/50 underline-offset-2"
-        >
-          {token.text}
-        </a>
-      )
-    }
-
-    return <span key={`${keyPrefix}-t-${index}`}>{token.text}</span>
-  })
-}
-
-function renderAssistantContent(text: string): JSX.Element[] {
-  const lines = text.replace(/\r\n/g, "\n").split("\n")
-  const nodes: JSX.Element[] = []
-  const bulletItems: string[] = []
-  const numberedItems: string[] = []
-
-  function flushBullets(key: number) {
-    if (bulletItems.length === 0) return
-    nodes.push(
-      <ul key={`ul-${key}`} className="my-2 list-disc space-y-1 pl-5 text-sm leading-relaxed">
-        {bulletItems.map((item, index) => (
-          <li key={`bul-${index}`}>{renderInline(item, `bul-${key}-${index}`)}</li>
-        ))}
-      </ul>
-    )
-    bulletItems.length = 0
-  }
-
-  function flushNumbers(key: number) {
-    if (numberedItems.length === 0) return
-    nodes.push(
-      <ol key={`ol-${key}`} className="my-2 list-decimal space-y-1 pl-5 text-sm leading-relaxed">
-        {numberedItems.map((item, index) => (
-          <li key={`num-${index}`}>{renderInline(item, `num-${key}-${index}`)}</li>
-        ))}
-      </ol>
-    )
-    numberedItems.length = 0
-  }
-
-  lines.forEach((rawLine, index) => {
-    const line = rawLine.trim()
-    if (!line) {
-      flushBullets(index)
-      flushNumbers(index)
-      return
-    }
-
-    const headingMatch = line.match(/^#{1,6}\s+(.+)$/)
-    if (headingMatch) {
-      flushBullets(index)
-      flushNumbers(index)
-      nodes.push(
-        <h4 key={`h-${index}`} className="mt-3 text-sm font-semibold text-cyan-200">
-          {renderInline(headingMatch[1], `h-${index}`)}
-        </h4>
-      )
-      return
-    }
-
-    if (/^[-*]\s+/.test(line)) {
-      flushNumbers(index)
-      bulletItems.push(line.replace(/^[-*]\s+/, ""))
-      return
-    }
-
-    if (/^\d+\.\s+/.test(line)) {
-      flushBullets(index)
-      numberedItems.push(line.replace(/^\d+\.\s+/, ""))
-      return
-    }
-
-    if (line.endsWith(":") && line.length < 80) {
-      flushBullets(index)
-      flushNumbers(index)
-      nodes.push(
-        <h4 key={`s-${index}`} className="mt-3 text-sm font-semibold text-cyan-200">
-          {renderInline(line, `s-${index}`)}
-        </h4>
-      )
-      return
-    }
-
-    flushBullets(index)
-    flushNumbers(index)
-    nodes.push(
-      <p key={`p-${index}`} className="text-sm leading-relaxed">
-        {renderInline(line, `p-${index}`)}
-      </p>
-    )
-  })
-
-  flushBullets(lines.length + 1)
-  flushNumbers(lines.length + 2)
-
-  return nodes
-}
 
 function formatThreadTime(date: Date): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" })
@@ -551,7 +396,7 @@ function AdvisorConversationPanel({
                 <div
                   className={`max-w-[90%] px-4 py-3 shadow-xs sm:max-w-[84%] ${
                     message.role === "assistant"
-                      ? "rounded-[1.6rem] rounded-bl-md border border-slate-200/90 bg-white text-slate-800 dark:border-slate-800/60 dark:bg-slate-900/92 dark:text-slate-100"
+                      ? "rounded-[1.6rem] rounded-bl-md border border-slate-200/90 bg-white text-slate-800 shadow-[0_4px_20px_rgba(15,23,42,0.04)] dark:border-slate-800/80 dark:bg-slate-900/90 dark:text-slate-100 dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
                       : "rounded-[1.6rem] rounded-br-md bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-white shadow-xs"
                   }`}
                 >
